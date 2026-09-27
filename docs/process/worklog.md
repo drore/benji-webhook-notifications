@@ -17,4 +17,10 @@ Records focused effort for the assignment's under-one-day constraint (CON-01). T
 | 2026-09-27 | 22:25–22:50 | Implementation plan (15 TDD tasks), self-review, commit `07719b0` | Inline execution chosen |
 | 2026-09-27 | 22:50– | Task 1 implementation | Ledger at `.superpowers/sdd/implementation-plan/progress.md` |
 
-Total focused time so far: approximately 1 hour 25 minutes.
+| 2026-09-27 | 22:50–23:05 | Tasks 1–5: backend skeleton through event intake; suite to 29 tests | Commits `ce7da2b`–`8ede7c1` |
+| 2026-09-27 | 23:05–23:20 | Tasks 6–9: receiver, worker, retry, recovery; suite to 44 tests | Commits `e65d37e`–`9ad479e` |
+| 2026-09-27 | 23:20–23:35 | Tasks 10–11: replay, overview; suite to 49 tests | Commits `77ec3b6`, `671e4d7` |
+| 2026-09-27 | 23:35–23:55 | Tasks 12–14: dashboard panels; 15 frontend tests, build | Commits `b332f92`–`8719a76` |
+| 2026-09-27 | 23:55– | Task 15: golden path, README, evidence | Final candidate |
+
+Total focused time so far: approximately 2 hours 20 minutes (including the earlier design and plan phases).

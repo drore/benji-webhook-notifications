@@ -13,4 +13,5 @@ The lean design implemented here builds directly on the specification Dror devel
 
 - **Environment:** opencode CLI with the `deepseek-flash` model. The work was executed as specification-driven, test-driven slices with a commit per slice.
 - **Trail:** the specification (`docs/spec/design.md`), the implementation plan (`docs/plan/implementation-plan.md`), the worklog (`docs/process/worklog.md`), and the git history. The execution ledger is scratch and git-ignored.
+- **Results on the final candidate:** `uv run pytest -q` → 50 passed; `npm test` → 15 passed (5 files); `npm run build` → succeeded; documented boot commands smoke-tested on spare ports (API health 200, receiver page 200).
 - **Limits:** no independent human review during the build; a fresh-context review of the whole branch follows the final task. Local checks do not establish production readiness.

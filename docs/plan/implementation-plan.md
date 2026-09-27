@@ -1063,3 +1063,12 @@ After Task 15: report the candidate revision, evidence, and limits to Dror; do n
 - **Key tradeoffs:** single process + SQLite rather than separate worker/broker (fastest honest local path; documented isolation limits); polling rather than SSE (sufficient at demo scale); immutable endpoint URL/subscriptions rather than versioning (simplicity; versioning documented as production evolution); deterministic 2s/4s backoff rather than jittered (reproducible demo).
 - **Cuts:** auth/RBAC, rate limiting, endpoint editing, versioning/cutover, secret rotation, jitter, websockets, Playwright, load tests (full list and rationale in `docs/spec/design.md` section 12).
 - **More-time design:** authenticated customer scope, public HTTPS destination policy with DNS/IP pinning, managed secrets with rotation, tuned jittered backoff, retention/redaction, broker-backed horizontal dispatch, measured capacity targets, and browser-automation coverage.
+
+## Execution Evidence (2026-09-27, branch `lean-webhook-build`)
+
+- **Candidate:** the Task 15 commit on `lean-webhook-build` (`git log -1`); all 15 tasks completed with per-task commits and ledger entries.
+- **Backend:** `uv run pytest -q` → **50 passed** on the final revision.
+- **Frontend:** `cd frontend && npm test` → **15 passed** across 5 files; `npm run build` (vue-tsc + vite) → success.
+- **Boot smoke test:** the README's exact uvicorn commands run on spare ports; `GET /api/health` → `{"status":"ok"}` and the receiver page returns 200. The receiver command needs `PYTHONPATH=backend` so it verifies signatures with the sender's single signing implementation.
+- **Ledger:** `.superpowers/sdd/implementation-plan/progress.md` (scratch, git-ignored) records per-task run commands, results, and rulings.
+- **Remaining limits:** manual browser walkthrough not yet run end-to-end by a human; receiver state is in-memory; no independent review yet (whole-branch review follows); no push or submission.
