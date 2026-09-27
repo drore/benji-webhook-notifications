@@ -21,6 +21,6 @@ Records focused effort for the assignment's under-one-day constraint (CON-01). T
 | 2026-09-27 | 23:05–23:20 | Tasks 6–9: receiver, worker, retry, recovery; suite to 44 tests | Commits `e65d37e`–`9ad479e` |
 | 2026-09-27 | 23:20–23:35 | Tasks 10–11: replay, overview; suite to 49 tests | Commits `77ec3b6`, `671e4d7` |
 | 2026-09-27 | 23:35–23:55 | Tasks 12–14: dashboard panels; 15 frontend tests, build | Commits `b332f92`–`8719a76` |
-| 2026-09-27 | 23:55– | Task 15: golden path, README, evidence | Final candidate |
+| 2026-09-27 | 23:55–01:10 | Post-review UX iteration (redesign, Vue Flow journey, simplifications, Playwright suite, playtesting, attempt timeline) | Commits `9427e7c`–`669ce56` |
 
-Total focused time so far: approximately 2 hours 20 minutes (including the earlier design and plan phases).
+Total focused time so far: approximately 3 hours 35 minutes (including the earlier design and plan phases; approximations rounded to five minutes).

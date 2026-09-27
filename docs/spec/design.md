@@ -1,6 +1,6 @@
 ---
 title: Lean webhook notification system and operations dashboard
-version: 0.1-pending-written-review
+version: 0.1
 date_created: 2026-09-27
 last_updated: 2026-09-27
 owner: Dror Elovits

@@ -6,6 +6,18 @@ A locally runnable webhook sender and operations dashboard for the [Benji senior
 
 This lean design builds on the specification developed in the earlier Benji attempt, reusing its settled contracts: endpoint-owned subscriptions and fan-out, HMAC-SHA256 signing with a one-time secret, ±300s timestamp window and delivery-id deduplication, 2s/4s three-attempt backoff with replay, server-generated event IDs with a separate sender idempotency key, loopback-only destination policy, and the safe `{code, message}` error envelope. The workflow/version layer is deliberately not carried over; see [design](docs/spec/design.md) and [plan](docs/plan/implementation-plan.md).
 
+## How delivery works
+
+Publishing an event persists it with one logical delivery per matching enabled endpoint, then a worker attempts each delivery over HTTP:
+
+- The first attempt is due immediately; a 2xx response succeeds.
+- Transport errors, the 2s request timeout, HTTP 408/429, and 5xx are retried with exponential backoff — 2 seconds before attempt 2, 4 seconds before attempt 3, three attempts per cycle. Other non-2xx responses and redirects fail terminally without retry.
+- Every attempt records its start/end, outcome, HTTP status, and a bounded response excerpt. A timed-out attempt is shown as outcome-unknown at the receiver, never as "unprocessed".
+- A failed delivery can be replayed: attempts append to the same delivery with the same delivery ID, and the receiver deduplicates side effects by that ID.
+- Disabling an endpoint stops new routing and pauses its queued deliveries; resuming restores them without resetting the attempt budget.
+
+No external broker or service is involved: SQLite is the durable queue, and restart recovery sweeps expired leases.
+
 ## Requirements
 
 - Python 3.12 via [`uv`](https://docs.astral.sh/uv/) (uv downloads the interpreter if needed)
