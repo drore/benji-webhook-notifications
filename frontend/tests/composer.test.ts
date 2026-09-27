@@ -23,13 +23,30 @@ async function submitValidEvent(wrapper: ReturnType<typeof mount>) {
 }
 
 describe("EventComposer", () => {
-  it("reports deduplicated resubmission with the original event id", async () => {
+  it("reports deduplicated resubmission with the original event id and keeps the key", async () => {
     const api = fakeApi({
       submitEvent: vi.fn(async () => ({ event_id: "evt_orig", deduplicated: true })),
     });
     const wrapper = mount(EventComposer, { props: { api } });
+    const keyInput = wrapper.get('input[data-testid="submission-key"]').element as HTMLInputElement;
+    const keyBefore = keyInput.value;
     await submitValidEvent(wrapper);
     expect(wrapper.get('[data-testid="deduplicated"]').text()).toContain("evt_orig");
+    expect(keyInput.value).toBe(keyBefore);
+  });
+
+  it("rotates the submission key after acceptance unless it was edited", async () => {
+    const api = fakeApi({
+      submitEvent: vi.fn(async () => ({ event_id: "evt_new", deduplicated: false })),
+    });
+    const wrapper = mount(EventComposer, { props: { api } });
+    const keyInput = wrapper.get('input[data-testid="submission-key"]').element as HTMLInputElement;
+    const firstKey = keyInput.value;
+    await submitValidEvent(wrapper);
+    expect(keyInput.value).not.toBe(firstKey);
+    await wrapper.get('[data-testid="submission-key"]').setValue("manual-key");
+    await submitValidEvent(wrapper);
+    expect(keyInput.value).toBe("manual-key");
   });
 
   it("keeps the key and offers check-or-resend after a transport failure", async () => {
@@ -100,5 +117,34 @@ describe("EventComposer", () => {
     expect(wrapper.get('[data-testid="subscriber-hint"]').text()).toContain(
       "1 enabled endpoint(s)",
     );
+  });
+
+  it("refreshes the subscriber hint while mounted", async () => {
+    vi.useFakeTimers();
+    let matching = false;
+    const api = fakeApi({
+      listEndpoints: async () => ({
+        items: [
+          {
+            id: "ep_1",
+            name: "CRM",
+            url: "http://127.0.0.1:9000/webhooks/ep_1",
+            event_types: ["reward_transaction_created"],
+            enabled: matching,
+            created_at: "2026-09-27T12:00:00Z",
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventComposer, { props: { api } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(wrapper.find('[data-testid="no-subscribers"]').exists()).toBe(true);
+    matching = true;
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(wrapper.get('[data-testid="subscriber-hint"]').text()).toContain(
+      "1 enabled endpoint(s)",
+    );
+    wrapper.unmount();
+    vi.useRealTimers();
   });
 });

@@ -60,6 +60,29 @@ def test_receiver_verifies_dedupes_and_behaves():
     anyio.run(flow)
 
 
+def test_receiver_log_is_bounded(monkeypatch):
+    import anyio
+
+    import receiver_app.app as receiver_module
+
+    monkeypatch.setattr(receiver_module, "MAX_LOGGED_REQUESTS", 3)
+    receiver = receiver_module.create_receiver_app()
+
+    async def flow():
+        ac = httpx.AsyncClient(transport=httpx.ASGITransport(app=receiver), base_url="http://r")
+        await ac.post("/api/config", json={"secret": "whsec_known", "behavior": "success"})
+        ts = int(time.time())
+        for number in range(4):
+            response = await _post(
+                receiver, "any", b"{}", "whsec_known", f"dlv_{number}", ts
+            )
+            assert response.status_code == 200
+        log = (await ac.get("/api/requests")).json()["items"]
+        assert [entry["delivery_id"] for entry in log] == ["dlv_1", "dlv_2", "dlv_3"]
+
+    anyio.run(flow)
+
+
 def test_receiver_accepts_any_path_but_requires_a_configured_secret():
     import anyio
 

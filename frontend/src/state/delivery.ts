@@ -51,6 +51,38 @@ export function attemptSummary(outcome: string | null, httpStatus: number | null
   }
 }
 
+export function attemptExplanation(outcome: string | null, httpStatus: number | null): string {
+  switch (outcome) {
+    case "success":
+      return `The receiver accepted this attempt (HTTP ${httpStatus ?? "2xx"}).`;
+    case "retryable_http":
+      return httpStatus === 429
+        ? "The receiver rate-limited this attempt (HTTP 429). It is retried with exponential backoff."
+        : `The receiver returned a server-side error (HTTP ${httpStatus ?? "5xx"}). It is retried with exponential backoff.`;
+    case "http_error":
+      if (httpStatus !== null && httpStatus >= 300 && httpStatus < 400) {
+        return `The receiver redirected (HTTP ${httpStatus}). Redirects are never followed, so this delivery fails without retrying.`;
+      }
+      if (httpStatus === 401 || httpStatus === 403) {
+        return `The receiver rejected the request, likely a signature mismatch (HTTP ${httpStatus}). Client errors fail without retrying.`;
+      }
+      if (httpStatus === 404) {
+        return "The receiver path was not found (HTTP 404). Client errors fail without retrying.";
+      }
+      return `The receiver rejected the request (HTTP ${httpStatus ?? "4xx"}). Client errors fail without retrying.`;
+    case "timeout":
+      return "No response within the request timeout — the receiver may or may not have processed it (outcome unknown at receiver). It is retried.";
+    case "transport_error":
+      return "The connection failed before a response. It is retried with exponential backoff.";
+    case "interrupted":
+      return "The sender restarted while this attempt was in flight; it counts against this cycle's attempt budget.";
+    case "policy_error":
+      return "The destination URL failed the local destination policy at dispatch; nothing was sent.";
+    default:
+      return "No outcome recorded for this attempt.";
+  }
+}
+
 export function createDeliveryState(api: DashboardApi) {
   const delivery = ref<DeliveryDetail | null>(null);
   const loading = ref(false);

@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app.signing import verify
 
 SLOW_DEFAULT_SECONDS = 3.0
+MAX_LOGGED_REQUESTS = 500
 BEHAVIORS = {"success", "fail_once", "always_fail", "slow", "slow_fail", "redirect"}
 
 
@@ -101,6 +102,8 @@ def create_receiver_app() -> FastAPI:
             "body": body.decode(errors="replace"),
         }
         state.requests.append(entry)
+        if len(state.requests) > MAX_LOGGED_REQUESTS:
+            del state.requests[:-MAX_LOGGED_REQUESTS]
         if config is None:
             return JSONResponse(status_code=401, content={"error": "signature verification failed"})
 
@@ -180,7 +183,7 @@ td code{{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f3f
 <header><span class="mark">R</span><div><h1>Demo webhook receiver</h1>
 <p class="sub">Verifies HMAC signatures, dedupes by delivery id, and scripts success or failure.</p></div></header>
 <div class="card"><h2>Connect a webhook secret</h2>
-<p class="hint">Paste the one-time secret from the dashboard, choose how this receiver responds, and save.</p>
+<p class="hint">Create an endpoint in the dashboard first — its one-time signing secret appears there once, at creation. Paste it here, choose how this receiver responds, and save.</p>
 <form id="config"><input name="secret" placeholder="whsec_… one-time secret" required>
 <select name="behavior"><option value="success">Always succeed</option>
 <option value="fail_once">Fail once, then succeed</option>

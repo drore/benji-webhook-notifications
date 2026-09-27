@@ -124,6 +124,52 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(attempt.text().toLowerCase()).toContain("outcome unknown");
   });
 
+  it("explains each attempt outcome in context", async () => {
+    const stamp = "2026-09-27T12:00:00Z";
+    const api = fakeApi({
+      getDelivery: async () => ({
+        ...deliveryFixture,
+        attempts: [
+          {
+            id: 1,
+            number: 1,
+            started_at: stamp,
+            finished_at: stamp,
+            outcome: "retryable_http",
+            http_status: 500,
+            response_excerpt: null,
+          },
+          {
+            id: 2,
+            number: 2,
+            started_at: stamp,
+            finished_at: stamp,
+            outcome: "http_error",
+            http_status: 404,
+            response_excerpt: null,
+          },
+          {
+            id: 3,
+            number: 3,
+            started_at: stamp,
+            finished_at: stamp,
+            outcome: "timeout",
+            http_status: null,
+            response_excerpt: null,
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+    expect(wrapper.findAll('[data-testid="attempt-help"]')).toHaveLength(3);
+    const tips = wrapper.findAll('[role="tooltip"]').map((tip) => tip.text());
+    expect(tips[0]).toContain("backoff");
+    expect(tips[1]).toContain("not found");
+    expect(tips[1]).toContain("without retrying");
+    expect(tips[2]).toContain("outcome unknown at receiver");
+  });
+
   it("polls the selected event so branch status updates without manual refresh", async () => {
     vi.useFakeTimers();
     let status: "retrying" | "succeeded" = "retrying";

@@ -18,6 +18,7 @@ export function createComposerState(api: DashboardApi) {
   const eventType = ref("reward_transaction_created");
   const payloadText = ref("{}");
   const submissionKey = ref(newSubmissionKey());
+  const keyManuallyEdited = ref(false);
   const submitting = ref(false);
   const outcome = ref<ComposerOutcome | null>(null);
   const matchCount = ref<number | null>(null);
@@ -37,8 +38,9 @@ export function createComposerState(api: DashboardApi) {
     }
   }
 
-  async function submit(): Promise<void> {
+  async function submit(typeOverride?: string): Promise<void> {
     if (submitting.value) return;
+    const targetType = typeOverride ?? eventType.value;
     let payload: unknown;
     try {
       payload = JSON.parse(payloadText.value);
@@ -51,12 +53,15 @@ export function createComposerState(api: DashboardApi) {
     try {
       const result = await api.submitEvent({
         idempotency_key: submissionKey.value,
-        type: eventType.value,
+        type: targetType,
         payload,
       });
       outcome.value = result.deduplicated
         ? { kind: "deduplicated", eventId: result.event_id }
         : { kind: "accepted", eventId: result.event_id };
+      if (!result.deduplicated && !keyManuallyEdited.value) {
+        submissionKey.value = newSubmissionKey();
+      }
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === "idempotency_conflict") {
         outcome.value = { kind: "conflict", message: cause.message };
@@ -76,8 +81,14 @@ export function createComposerState(api: DashboardApi) {
     }
   }
 
+  function updateKey(value: string): void {
+    submissionKey.value = value;
+    keyManuallyEdited.value = true;
+  }
+
   function newKey(): void {
     submissionKey.value = newSubmissionKey();
+    keyManuallyEdited.value = false;
     outcome.value = null;
   }
 
@@ -85,10 +96,12 @@ export function createComposerState(api: DashboardApi) {
     eventType,
     payloadText,
     submissionKey,
+    keyManuallyEdited,
     submitting,
     outcome,
     matchCount,
     refreshMatches,
+    updateKey,
     submit,
     newKey,
   };

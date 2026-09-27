@@ -9,8 +9,10 @@ import {
   enableEndpoint,
   endpointRow,
   publishEvent,
+  readSubmissionKey,
   RECEIVER_URL,
   selectLatestEvent,
+  setSubmissionKey,
   uniqueSuffix,
 } from "./helpers";
 
@@ -52,6 +54,9 @@ test.describe("reviewer journey", () => {
     await configureReceiver(request, ledgerSecret, "success");
     await enableEndpoint(page, crmName);
     await enableEndpoint(page, ledgerName);
+    await page.getByLabel("Event type", { exact: true }).selectOption("campaign_updated");
+    await expect(page.getByTestId("subscriber-hint")).toContainText("2 enabled endpoint(s)");
+    const firstKey = await readSubmissionKey(page);
     await publishEvent(page, {
       type: "campaign_updated",
       payload: '{"campaign":"e2e","step":1}',
@@ -59,12 +64,17 @@ test.describe("reviewer journey", () => {
     await expect(page.getByTestId("accepted")).toContainText("Accepted as");
     const originalId = (await acceptedEventId(page))?.trim() ?? "";
     expect(originalId).toMatch(/^evt_/);
+    expect(await readSubmissionKey(page)).not.toBe(firstKey);
     await selectLatestEvent(page, "campaign_updated");
     await expect(page.getByTestId("branch")).toHaveCount(2);
     await expect(branchFor(page, crmName)).toContainText("Delivered", { timeout: 15_000 });
     await expect(branchFor(page, ledgerName)).toContainText("Delivered", { timeout: 15_000 });
+    await setSubmissionKey(page, firstKey);
     await page.getByRole("button", { name: "Publish event" }).click();
     await expect(page.getByTestId("deduplicated")).toContainText(originalId);
+    await page.getByLabel("Payload").fill('{"campaign":"e2e","step":2}');
+    await page.getByRole("button", { name: "Publish event" }).click();
+    await expect(page.getByTestId("conflict")).toContainText("different content");
     await expect(page.getByTestId("branch")).toHaveCount(2);
   });
 
@@ -92,6 +102,9 @@ test.describe("reviewer journey", () => {
     await expect(page.getByTestId("attempt-row")).toHaveCount(2);
     await expect(page.getByTestId("attempt-row").first()).toContainText("Retryable HTTP 500");
     await expect(page.getByTestId("attempt-row").nth(1)).toContainText("2xx (HTTP 200)");
+    await page.getByTestId("attempt-help").first().hover();
+    await expect(page.getByRole("tooltip").first()).toBeVisible();
+    await expect(page.getByRole("tooltip").first()).toContainText("backoff");
   });
 
   test("REQ-003/004 a verified failing delivery keeps attempts and replays on the same delivery", async ({

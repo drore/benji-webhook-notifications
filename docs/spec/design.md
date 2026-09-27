@@ -128,10 +128,10 @@ Data flow: browser → `POST /api/events` → one store transaction (event + del
 Event-centered journey view built on a shared design system (cards, status pills, Benji-inspired palette navy/vivid purple, system font stack) with a read-only Vue Flow canvas for the fan-out.
 
 - **Header:** `Needs attention` (failed count), `Retrying` (count + earliest due), stale-state indicator.
-- **Composer:** event-type select with Benji-domain examples (`reward_transaction_created`, `campaign_updated`, `member_account_linked`) plus custom input; JSON payload editor; generated idempotency key retained across uncertain responses; buttons disabled while pending; dedup and conflict notices; a pre-publish hint showing how many enabled endpoints currently subscribe, warning when none do.
+- **Composer:** event-type select with Benji-domain examples (`reward_transaction_created`, `campaign_updated`, `member_account_linked`) plus custom input; JSON payload editor; generated idempotency key that rotates after each accepted event unless manually edited (manual reuse demonstrates deduplication and conflict); buttons disabled while pending; dedup and conflict notices; a pre-publish hint showing how many enabled endpoints currently subscribe, warning when none do.
 - **Events list:** type, id, age, and delivery status counts with a `no receivers` chip for zero-delivery events; selecting an event opens the fan-out.
 - **Fan-out:** the selected event as a source node with one endpoint node per delivery (status icon + color + text, animated edge only while an attempt is active), auto-layout with pan/zoom and no editing operations; `No receivers matched` for zero deliveries.
-- **Delivery panel:** endpoint and URL, state, due time, ordered attempt timeline (outcome, HTTP status or classified error, bounded excerpt), formatted payload as escaped JSON, replay button only when eligible.
+- **Delivery panel:** endpoint and URL, state, due time, ordered attempt timeline (outcome, HTTP status or classified error, bounded excerpt) with a per-attempt `?` explanation of what that status means in context, formatted payload as escaped JSON, replay button only when eligible.
 - **Endpoints panel:** create form (name and event types; the receiver URL is generated), one-time secret display with copy and receiver setup steps, enable/disable toggles.
 - **States:** loading, empty, pending-action disablement, inline safe errors, dedup/conflict, stale banner, paused. Polling every 2s while visible per FR-10.
 

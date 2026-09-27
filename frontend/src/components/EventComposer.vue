@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { createComposerState } from "../state/composer";
@@ -13,6 +13,7 @@ const {
   outcome,
   matchCount,
   refreshMatches,
+  updateKey,
   submit,
   newKey,
 } = createComposerState(props.api);
@@ -32,11 +33,21 @@ const effectiveType = computed(() =>
   eventType.value === "custom" ? customType.value : eventType.value,
 );
 
+let timer: number | null = null;
+
 watch(effectiveType, (type) => void refreshMatches(type), { immediate: true });
 
+onMounted(() => {
+  timer = window.setInterval(() => {
+    if (!document.hidden) void refreshMatches(effectiveType.value);
+  }, 2000);
+});
+onUnmounted(() => {
+  if (timer !== null) window.clearInterval(timer);
+});
+
 function submitEvent(): void {
-  if (eventType.value === "custom") eventType.value = customType.value;
-  void submit();
+  void submit(effectiveType.value);
 }
 </script>
 
@@ -75,8 +86,17 @@ function submitEvent(): void {
       </label>
       <label>
         Submission key
-        <input :value="submissionKey" data-testid="submission-key" readonly />
+        <input
+          :value="submissionKey"
+          data-testid="submission-key"
+          @input="updateKey(($event.target as HTMLInputElement).value)"
+        />
       </label>
+      <p class="side-note" style="margin: 0">
+        A fresh key is generated after each accepted event. Edit it to reuse a key deliberately —
+        resending the same key and payload shows deduplication; changing the payload under the
+        same key shows a conflict.
+      </p>
       <div class="form-row">
         <button
           type="button"
@@ -123,7 +143,7 @@ function submitEvent(): void {
     >
       <span>{{ outcome.message }} The submission result is unknown.</span>
       <span class="banner-actions">
-        <button type="button" class="btn btn-small" data-action="check-resend" :disabled="submitting" @click="submit">
+        <button type="button" class="btn btn-small" data-action="check-resend" :disabled="submitting" @click="submit()">
           Check or resend submission
         </button>
         <button type="button" class="btn btn-small" data-action="new-key" :disabled="submitting" @click="newKey">

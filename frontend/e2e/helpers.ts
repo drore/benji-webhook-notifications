@@ -62,6 +62,14 @@ export async function publishEvent(
   await page.getByRole("button", { name: "Publish event" }).click();
 }
 
+export async function readSubmissionKey(page: Page): Promise<string> {
+  return (await page.getByTestId("submission-key").inputValue()).trim();
+}
+
+export async function setSubmissionKey(page: Page, key: string): Promise<void> {
+  await page.getByTestId("submission-key").fill(key);
+}
+
 export function acceptedEventId(page: Page): Promise<string | null> {
   return page
     .getByTestId("accepted")

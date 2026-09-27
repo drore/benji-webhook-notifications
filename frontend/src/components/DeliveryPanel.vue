@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
-import { attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
+import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
 
 const props = defineProps<{ api: DashboardApi; deliveryId: string | null }>();
 const { delivery, loading, error, replaying, replayError, load, replay } = createDeliveryState(
@@ -99,6 +99,19 @@ function outcomeTone(outcome: string | null): string {
             <span class="attempt-number">#{{ attempt.number }}</span>
             <span class="status-pill" :data-status="outcomeTone(attempt.outcome)">
               {{ attemptSummary(attempt.outcome, attempt.http_status) }}
+            </span>
+            <span class="attempt-help">
+              <button
+                type="button"
+                class="attempt-help-trigger"
+                data-testid="attempt-help"
+                aria-label="Attempt explanation"
+              >
+                ?
+              </button>
+              <span class="tip" role="tooltip">
+                {{ attemptExplanation(attempt.outcome, attempt.http_status) }}
+              </span>
             </span>
             <span class="attempt-time">
               {{ new Date(attempt.started_at).toLocaleTimeString() }} →
