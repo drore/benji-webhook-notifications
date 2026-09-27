@@ -49,12 +49,22 @@ class DeliveryWorker:
         return len(claimed)
 
     async def run_forever(self) -> None:
+        await self.recover()
         try:
             while True:
                 processed = await self.tick()
                 await asyncio.sleep(0 if processed else self.settings.tick_interval)
         except asyncio.CancelledError:
             return
+
+    async def recover(self) -> int:
+        conn = self._conn_factory()
+        try:
+            return store.sweep_expired_leases(
+                conn, time.time(), self.settings.claim_lease_seconds
+            )
+        finally:
+            conn.close()
 
     async def _attempt(self, item: store.ClaimedDelivery) -> None:
         try:
@@ -145,6 +155,21 @@ class DeliveryWorker:
     ) -> None:
         conn = self._conn_factory()
         try:
+            if terminal_status is None:
+                endpoint = store.get_endpoint(conn, item.endpoint_id)
+                if endpoint is not None and not endpoint.enabled:
+                    store.complete_attempt(
+                        conn,
+                        item.id,
+                        item.started_at,
+                        outcome,
+                        http_status,
+                        excerpt,
+                        None,
+                        None,
+                        paused=True,
+                    )
+                    return
             store.complete_attempt(
                 conn,
                 item.id,

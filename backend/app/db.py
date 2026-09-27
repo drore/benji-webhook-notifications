@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
   endpoint_id TEXT NOT NULL REFERENCES endpoints(id),
   status TEXT NOT NULL, due_at REAL, cycle_attempts INTEGER NOT NULL DEFAULT 0,
   lease_expires_at REAL, created_at REAL NOT NULL, updated_at REAL NOT NULL,
+  claim_started_at REAL,
   UNIQUE(event_id, endpoint_id));
 CREATE TABLE IF NOT EXISTS attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT, delivery_id TEXT NOT NULL REFERENCES deliveries(id),

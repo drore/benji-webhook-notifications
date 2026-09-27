@@ -11,7 +11,9 @@ def test_disable_pauses_pending_and_retrying_and_resume_restores_due_times(db_co
     now = time.time()
     db_conn.execute("INSERT INTO events VALUES ('evt_1','k1','a','{}',?)", (now,))
     db_conn.execute(
-        "INSERT INTO deliveries VALUES ('dlv_1','evt_1',?,'pending',?,0,NULL,?,?)",
+        "INSERT INTO deliveries (id, event_id, endpoint_id, status, due_at, cycle_attempts,"
+        " lease_expires_at, created_at, updated_at)"
+        " VALUES ('dlv_1','evt_1',?,'pending',?,0,NULL,?,?)",
         (ep.id, now, now, now),
     )
     assert store.list_events(db_conn, 10)[0].deliveries["pending"] == 1

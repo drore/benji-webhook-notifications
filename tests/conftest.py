@@ -135,6 +135,46 @@ class Env:
             conn.close()
         return [dict(row) for row in rows]
 
+    def conn(self):
+        return connect(self.settings.db_path)
+
+    def claim_due_delivery(self):
+        from app import store
+
+        conn = self.conn()
+        try:
+            item = store.claim_due_delivery(
+                conn, time_module.time(), set(), self.settings.claim_lease_seconds
+            )
+        finally:
+            conn.close()
+        return item.id if item else None
+
+    def sweep_leases(self):
+        from app import store
+
+        conn = self.conn()
+        try:
+            return store.sweep_expired_leases(
+                conn, time_module.time(), self.settings.claim_lease_seconds
+            )
+        finally:
+            conn.close()
+
+    def drain_worker(self, timeout=10):
+        import asyncio
+
+        deadline = time_module.time() + timeout
+        while time_module.time() < deadline:
+            asyncio.run(self.worker.tick())
+            if not any(
+                row["status"] in ("pending", "retrying", "in_progress")
+                for row in self.deliveries()
+            ):
+                return
+            time_module.sleep(0.02)
+        raise AssertionError("worker did not drain")
+
     def receiver_requests(self):
         return self.receiver.requests()
 

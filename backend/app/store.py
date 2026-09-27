@@ -169,6 +169,11 @@ def set_endpoint_enabled(conn, endpoint_id: str, enabled: bool) -> EndpointRecor
         )
         if enabled:
             conn.execute(
+                "UPDATE deliveries SET status = 'failed', due_at = NULL, updated_at = ?"
+                " WHERE endpoint_id = ? AND status = 'paused' AND cycle_attempts >= 3",
+                (now, endpoint_id),
+            )
+            conn.execute(
                 "UPDATE deliveries SET status = 'pending', updated_at = ?"
                 " WHERE endpoint_id = ? AND status = 'paused' AND due_at <= ?",
                 (now, endpoint_id, now),
@@ -356,9 +361,9 @@ def claim_due_delivery(
             (row["id"],),
         ).fetchone()["n"]
         conn.execute(
-            "UPDATE deliveries SET status = 'in_progress', lease_expires_at = ?, updated_at = ?"
-            " WHERE id = ?",
-            (now + lease_seconds, now, row["id"]),
+            "UPDATE deliveries SET status = 'in_progress', lease_expires_at = ?,"
+            " claim_started_at = ?, updated_at = ? WHERE id = ?",
+            (now + lease_seconds, now, now, row["id"]),
         )
     return ClaimedDelivery(
         id=row["id"],
@@ -380,6 +385,7 @@ def complete_attempt(
     response_excerpt: str | None,
     next_due_at: float | None,
     terminal_status: str | None,
+    paused: bool = False,
 ) -> None:
     now = time.time()
     with transaction(conn):
@@ -401,14 +407,47 @@ def complete_attempt(
             ),
         )
         cycle = conn.execute(
-            "SELECT cycle_attempts FROM deliveries WHERE id = ?", (delivery_id,)
-        ).fetchone()["cycle_attempts"]
-        if terminal_status is not None:
+            "SELECT cycle_attempts, due_at FROM deliveries WHERE id = ?", (delivery_id,)
+        ).fetchone()
+        if paused and terminal_status is None:
+            status, due_at = "paused", cycle["due_at"]
+        elif terminal_status is not None:
             status, due_at = terminal_status, None
         else:
             status, due_at = "retrying", next_due_at
         conn.execute(
             "UPDATE deliveries SET status = ?, due_at = ?, cycle_attempts = ?,"
-            " lease_expires_at = NULL, updated_at = ? WHERE id = ?",
-            (status, due_at, cycle + 1, now, delivery_id),
+            " lease_expires_at = NULL, claim_started_at = NULL, updated_at = ? WHERE id = ?",
+            (status, due_at, cycle["cycle_attempts"] + 1, now, delivery_id),
         )
+
+
+def sweep_expired_leases(conn, now: float, lease_seconds: float) -> int:
+    with transaction(conn):
+        rows = conn.execute(
+            "SELECT id, cycle_attempts, claim_started_at FROM deliveries"
+            " WHERE status = 'in_progress' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?",
+            (now,),
+        ).fetchall()
+        for row in rows:
+            number = conn.execute(
+                "SELECT COALESCE(MAX(number), 0) + 1 AS n FROM attempts WHERE delivery_id = ?",
+                (row["id"],),
+            ).fetchone()["n"]
+            started_at = row["claim_started_at"] or (now - lease_seconds)
+            conn.execute(
+                "INSERT INTO attempts (delivery_id, number, started_at, finished_at, outcome)"
+                " VALUES (?, ?, ?, ?, 'interrupted')",
+                (row["id"], number, started_at, now),
+            )
+            cycle = row["cycle_attempts"] + 1
+            if cycle >= 3:
+                status, due_at = "failed", None
+            else:
+                status, due_at = "retrying", now
+            conn.execute(
+                "UPDATE deliveries SET status = ?, due_at = ?, cycle_attempts = ?,"
+                " lease_expires_at = NULL, claim_started_at = NULL, updated_at = ? WHERE id = ?",
+                (status, due_at, cycle, now, row["id"]),
+            )
+        return len(rows)
