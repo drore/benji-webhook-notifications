@@ -55,7 +55,8 @@ def test_receiver_verifies_dedupes_and_behaves():
         stale = await _post(receiver, "crm", body, "whsec_test", "dlv_2", ts - 301)
         assert stale.status_code == 401
         log = (await ac.get("/api/requests")).json()["items"]
-        assert len(log) == 4 and [entry["verified"] for entry in log] == [True, True, True, False]
+        assert len(log) == 5
+        assert [entry["verified"] for entry in log] == [True, True, True, False, False]
 
     anyio.run(flow)
 
