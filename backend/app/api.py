@@ -1,5 +1,7 @@
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
+
+import asyncio
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +13,7 @@ from .config import Settings, get_settings
 from .db import connect, init_schema
 from .models import ApiError, EndpointCreate, EventSubmit
 from .policy import PolicyError
+from .worker import DeliveryWorker
 
 _NOT_FOUND_CODE = "not_found"
 
@@ -55,6 +58,40 @@ def _event_detail_dto(detail: store.EventDetail) -> dict:
     }
 
 
+def _delivery_detail_dto(detail: store.DeliveryDetail) -> dict:
+    return {
+        "id": detail.id,
+        "event_id": detail.event_id,
+        "event": {
+            "id": detail.event_id,
+            "type": detail.event_type,
+            "payload": detail.event_payload,
+            "created_at": _iso(detail.event_created_at),
+        },
+        "endpoint": {
+            "id": detail.endpoint_id,
+            "name": detail.endpoint_name,
+            "url": detail.endpoint_url,
+            "enabled": detail.endpoint_enabled,
+        },
+        "status": detail.status,
+        "due_at": _iso(detail.due_at) if detail.due_at is not None else None,
+        "cycle_attempts": detail.cycle_attempts,
+        "attempts": [
+            {
+                "id": attempt.id,
+                "number": attempt.number,
+                "started_at": _iso(attempt.started_at),
+                "finished_at": _iso(attempt.finished_at) if attempt.finished_at else None,
+                "outcome": attempt.outcome,
+                "http_status": attempt.http_status,
+                "response_excerpt": attempt.response_excerpt,
+            }
+            for attempt in detail.attempts
+        ],
+    }
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
 
@@ -65,7 +102,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         init_schema(conn)
         conn.close()
         app.state.conn_factory = lambda: connect(resolved.db_path)
-        yield
+        worker_task: asyncio.Task | None = None
+        if resolved.worker_enabled:
+            worker = DeliveryWorker(app.state.conn_factory, resolved)
+            worker_task = asyncio.create_task(worker.run_forever())
+        try:
+            yield
+        finally:
+            if worker_task is not None:
+                worker_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await worker_task
 
     app = FastAPI(title="Benji webhook demo", lifespan=lifespan)
 
@@ -158,6 +205,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if detail is None:
             raise ApiError(_NOT_FOUND_CODE, "Event not found.", 404)
         return _event_detail_dto(detail)
+
+    @app.get("/api/deliveries/{delivery_id}")
+    def get_delivery(delivery_id: str, conn=Depends(get_conn)):
+        detail = store.get_delivery(conn, delivery_id)
+        if detail is None:
+            raise ApiError(_NOT_FOUND_CODE, "Delivery not found.", 404)
+        return _delivery_detail_dto(detail)
 
     return app
 

@@ -71,6 +71,45 @@ class Acceptance:
     event_id: str
 
 
+@dataclass
+class ClaimedDelivery:
+    id: str
+    endpoint_id: str
+    url: str
+    secret: str
+    event_payload: str
+    attempt_number: int
+    started_at: float
+
+
+@dataclass
+class AttemptRecord:
+    id: int
+    number: int
+    started_at: float
+    finished_at: float | None
+    outcome: str | None
+    http_status: int | None
+    response_excerpt: str | None
+
+
+@dataclass
+class DeliveryDetail:
+    id: str
+    event_id: str
+    event_type: str
+    event_payload: object
+    event_created_at: float
+    endpoint_id: str
+    endpoint_name: str
+    endpoint_url: str
+    endpoint_enabled: bool
+    status: str
+    due_at: float | None
+    cycle_attempts: int
+    attempts: list[AttemptRecord] = field(default_factory=list)
+
+
 def _endpoint_from_row(row) -> EndpointRecord:
     return EndpointRecord(
         id=row["id"],
@@ -250,3 +289,126 @@ def get_event(conn, event_id: str) -> EventDetail | None:
             for delivery in delivery_rows
         ],
     )
+
+
+def get_delivery(conn, delivery_id: str) -> DeliveryDetail | None:
+    row = conn.execute(
+        "SELECT d.*, ev.type AS event_type, ev.payload AS event_payload,"
+        " ev.created_at AS event_created_at, e.name AS endpoint_name, e.url AS endpoint_url,"
+        " e.enabled AS endpoint_enabled"
+        " FROM deliveries d JOIN events ev ON ev.id = d.event_id"
+        " JOIN endpoints e ON e.id = d.endpoint_id WHERE d.id = ?",
+        (delivery_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    attempt_rows = conn.execute(
+        "SELECT * FROM attempts WHERE delivery_id = ? ORDER BY number", (delivery_id,)
+    ).fetchall()
+    return DeliveryDetail(
+        id=row["id"],
+        event_id=row["event_id"],
+        event_type=row["event_type"],
+        event_payload=json.loads(row["event_payload"]),
+        event_created_at=row["event_created_at"],
+        endpoint_id=row["endpoint_id"],
+        endpoint_name=row["endpoint_name"],
+        endpoint_url=row["endpoint_url"],
+        endpoint_enabled=bool(row["endpoint_enabled"]),
+        status=row["status"],
+        due_at=row["due_at"],
+        cycle_attempts=row["cycle_attempts"],
+        attempts=[
+            AttemptRecord(
+                id=attempt["id"],
+                number=attempt["number"],
+                started_at=attempt["started_at"],
+                finished_at=attempt["finished_at"],
+                outcome=attempt["outcome"],
+                http_status=attempt["http_status"],
+                response_excerpt=attempt["response_excerpt"],
+            )
+            for attempt in attempt_rows
+        ],
+    )
+
+
+def claim_due_delivery(
+    conn, now: float, excluded_endpoint_ids: set[str], lease_seconds: float
+) -> ClaimedDelivery | None:
+    excluded = sorted(excluded_endpoint_ids)
+    placeholders = ", ".join("?" for _ in excluded)
+    condition = f" AND d.endpoint_id NOT IN ({placeholders})" if excluded else ""
+    sql = (
+        "SELECT d.id, d.endpoint_id, e.url, e.secret, ev.payload"
+        " FROM deliveries d JOIN endpoints e ON e.id = d.endpoint_id"
+        " JOIN events ev ON ev.id = d.event_id"
+        " WHERE d.status IN ('pending', 'retrying') AND (d.due_at IS NULL OR d.due_at <= ?)"
+        " AND e.enabled = 1" + condition +
+        " ORDER BY d.due_at LIMIT 1"
+    )
+    with transaction(conn):
+        row = conn.execute(sql, (now, *excluded)).fetchone()
+        if row is None:
+            return None
+        next_number = conn.execute(
+            "SELECT COALESCE(MAX(number), 0) + 1 AS n FROM attempts WHERE delivery_id = ?",
+            (row["id"],),
+        ).fetchone()["n"]
+        conn.execute(
+            "UPDATE deliveries SET status = 'in_progress', lease_expires_at = ?, updated_at = ?"
+            " WHERE id = ?",
+            (now + lease_seconds, now, row["id"]),
+        )
+    return ClaimedDelivery(
+        id=row["id"],
+        endpoint_id=row["endpoint_id"],
+        url=row["url"],
+        secret=row["secret"],
+        event_payload=row["payload"],
+        attempt_number=next_number,
+        started_at=now,
+    )
+
+
+def complete_attempt(
+    conn,
+    delivery_id: str,
+    started_at: float,
+    outcome: str,
+    http_status: int | None,
+    response_excerpt: str | None,
+    next_due_at: float | None,
+    terminal_status: str | None,
+) -> None:
+    now = time.time()
+    with transaction(conn):
+        number = conn.execute(
+            "SELECT COALESCE(MAX(number), 0) + 1 AS n FROM attempts WHERE delivery_id = ?",
+            (delivery_id,),
+        ).fetchone()["n"]
+        conn.execute(
+            "INSERT INTO attempts (delivery_id, number, started_at, finished_at, outcome,"
+            " http_status, response_excerpt) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                delivery_id,
+                number,
+                started_at,
+                now,
+                outcome,
+                http_status,
+                response_excerpt[:1024] if response_excerpt else None,
+            ),
+        )
+        cycle = conn.execute(
+            "SELECT cycle_attempts FROM deliveries WHERE id = ?", (delivery_id,)
+        ).fetchone()["cycle_attempts"]
+        if terminal_status is not None:
+            status, due_at = terminal_status, None
+        else:
+            status, due_at = "retrying", next_due_at
+        conn.execute(
+            "UPDATE deliveries SET status = ?, due_at = ?, cycle_attempts = ?,"
+            " lease_expires_at = NULL, updated_at = ? WHERE id = ?",
+            (status, due_at, cycle + 1, now, delivery_id),
+        )
