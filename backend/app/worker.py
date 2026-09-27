@@ -124,8 +124,8 @@ class DeliveryWorker:
     def _retry_or_fail(
         self, item: store.ClaimedDelivery, outcome: str, http_status: int | None, excerpt: str
     ) -> None:
-        if item.attempt_number < 3:
-            next_due_at = time.time() + retry_delay(self.settings, item.attempt_number)
+        if item.cycle_attempts < 2:
+            next_due_at = time.time() + retry_delay(self.settings, item.cycle_attempts + 1)
             self._finish(
                 item,
                 outcome=outcome,
@@ -155,21 +155,6 @@ class DeliveryWorker:
     ) -> None:
         conn = self._conn_factory()
         try:
-            if terminal_status is None:
-                endpoint = store.get_endpoint(conn, item.endpoint_id)
-                if endpoint is not None and not endpoint.enabled:
-                    store.complete_attempt(
-                        conn,
-                        item.id,
-                        item.started_at,
-                        outcome,
-                        http_status,
-                        excerpt,
-                        None,
-                        None,
-                        paused=True,
-                    )
-                    return
             store.complete_attempt(
                 conn,
                 item.id,
@@ -179,6 +164,7 @@ class DeliveryWorker:
                 excerpt,
                 next_due_at,
                 terminal_status,
+                pause_if_disabled=terminal_status is None,
             )
         finally:
             conn.close()

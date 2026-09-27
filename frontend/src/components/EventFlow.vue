@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi, EventDetail } from "../api/client";
 import { STATUS_LABELS } from "../state/delivery";
@@ -10,6 +10,7 @@ const emit = defineEmits<{ "select-delivery": [deliveryId: string] }>();
 const event = ref<EventDetail | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+let timer: number | null = null;
 
 async function load(): Promise<void> {
   if (!props.eventId) {
@@ -27,7 +28,25 @@ async function load(): Promise<void> {
   }
 }
 
-onMounted(load);
+function startPolling(): void {
+  stopPolling();
+  timer = window.setInterval(() => {
+    if (!document.hidden) void load();
+  }, 2000);
+}
+
+function stopPolling(): void {
+  if (timer !== null) {
+    window.clearInterval(timer);
+    timer = null;
+  }
+}
+
+onMounted(async () => {
+  await load();
+  startPolling();
+});
+onUnmounted(stopPolling);
 watch(() => props.eventId, load);
 </script>
 

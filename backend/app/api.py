@@ -138,7 +138,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error_handler(_: Request, exc: StarletteHTTPException):
-        code = _NOT_FOUND_CODE if exc.status_code == 404 else "http_error"
+        if exc.status_code == 404:
+            code = _NOT_FOUND_CODE
+        elif exc.status_code == 400:
+            code = "validation_error"
+        else:
+            code = "http_error"
         return _error_response(code, str(exc.detail), exc.status_code)
 
     @app.exception_handler(Exception)

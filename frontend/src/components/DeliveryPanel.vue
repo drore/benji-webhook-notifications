@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
@@ -9,6 +9,22 @@ const { delivery, loading, error, replaying, replayError, load, replay } = creat
   props.api,
 );
 
+let timer: number | null = null;
+
+function startPolling(): void {
+  stopPolling();
+  timer = window.setInterval(() => {
+    if (!document.hidden && props.deliveryId) void load(props.deliveryId);
+  }, 2000);
+}
+
+function stopPolling(): void {
+  if (timer !== null) {
+    window.clearInterval(timer);
+    timer = null;
+  }
+}
+
 watch(
   () => props.deliveryId,
   (id) => {
@@ -16,6 +32,9 @@ watch(
   },
   { immediate: true },
 );
+
+onMounted(startPolling);
+onUnmounted(stopPolling);
 
 const canReplay = computed(
   () => delivery.value?.status === "failed" && delivery.value?.endpoint.enabled === true,

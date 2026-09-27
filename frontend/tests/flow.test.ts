@@ -124,6 +124,38 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(attempt.text().toLowerCase()).toContain("outcome unknown");
   });
 
+  it("polls the selected event so branch status updates without manual refresh", async () => {
+    vi.useFakeTimers();
+    let status: "retrying" | "succeeded" = "retrying";
+    const api = fakeApi({
+      getEvent: async () => ({
+        id: "evt_1",
+        type: "reward_transaction_created",
+        payload: { amount: 5 },
+        created_at: "2026-09-27T12:00:00Z",
+        deliveries: [
+          {
+            id: "dlv_1",
+            endpoint_id: "ep_1",
+            endpoint_name: "Partner CRM",
+            endpoint_url: "http://127.0.0.1:9000/webhooks/crm",
+            status,
+            due_at: null,
+            attempts_count: 1,
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventFlow, { props: { api, eventId: "evt_1" } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(wrapper.get('[data-testid="branch"]').text()).toContain("Retrying");
+    status = "succeeded";
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(wrapper.get('[data-testid="branch"]').text()).toContain("Delivered");
+    wrapper.unmount();
+    vi.useRealTimers();
+  });
+
   it("shows replay-unavailable text when the endpoint is disabled", async () => {
     const api = fakeApi({
       getDelivery: async () => ({

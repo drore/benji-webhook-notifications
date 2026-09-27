@@ -100,6 +100,29 @@ def test_intake_bounds_and_malformed(client):
     )
 
 
+def test_intake_rejects_values_json_cannot_serve(client):
+    nan_case = client.post(
+        "/api/events",
+        content=b'{"idempotency_key":"k-nan","type":"a","payload":{"x":NaN}}',
+        headers={"content-type": "application/json"},
+    )
+    assert nan_case.status_code == 400 and nan_case.json()["code"] == "validation_error"
+    nested: object = []
+    for _ in range(100):
+        nested = [nested]
+    deep = client.post(
+        "/api/events", json={"idempotency_key": "k-deep", "type": "a", "payload": nested}
+    )
+    assert deep.status_code == 400 and deep.json()["code"] == "validation_error"
+
+
+def test_intake_reports_non_utf8_body_as_validation_error(client):
+    response = client.post(
+        "/api/events", content=b"\xff\xfe{}", headers={"content-type": "application/json"}
+    )
+    assert response.status_code == 400 and response.json()["code"] == "validation_error"
+
+
 def test_disabled_endpoint_excluded_from_new_fan_out(client):
     client.post(
         "/api/endpoints",

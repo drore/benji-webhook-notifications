@@ -14,12 +14,17 @@ def validate_url(url: str, receiver_origin: str) -> str:
 
     Returns the webhook path slug when valid, otherwise raises PolicyError.
     """
-    origin = urlsplit(receiver_origin)
-    parsed = urlsplit(url)
+    try:
+        origin = urlsplit(receiver_origin)
+        parsed = urlsplit(url)
+        parsed_port = parsed.port
+        origin_port = origin.port
+    except ValueError as exc:
+        raise PolicyError("The URL is malformed.") from exc
 
     if parsed.scheme != origin.scheme:
         raise PolicyError("Only http URLs are allowed.")
-    if parsed.hostname != origin.hostname or parsed.port != origin.port:
+    if parsed.hostname != origin.hostname or parsed_port != origin_port:
         raise PolicyError("Only the configured receiver host and port are allowed.")
     if parsed.username or parsed.password:
         raise PolicyError("Credentials are not allowed in endpoint URLs.")

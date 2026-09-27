@@ -32,6 +32,16 @@ def test_replay_keeps_delivery_and_appends_attempts(make_env):
     assert env.receiver_requests()[-1]["delivery_id"] == d["id"]
 
 
+def test_replay_cycle_retries_up_to_three_again(make_env):
+    env = make_env(receiver_behavior="always_fail", retry_delays="0.05,0.1")
+    d = _failed_delivery(env)
+    assert [a["number"] for a in d["attempts"]] == [1, 2, 3]
+    assert env.client.post(f"/api/deliveries/{d['id']}/replay").status_code == 202
+    d = env.deliver_once()
+    assert d["status"] == "failed"
+    assert [a["number"] for a in d["attempts"]] == [1, 2, 3, 4, 5, 6]
+
+
 def test_disabled_endpoint_blocks_replay_until_resumed(make_env):
     env = make_env(receiver_behavior="always_fail", retry_delays="0.05,0.1")
     d = _failed_delivery(env)

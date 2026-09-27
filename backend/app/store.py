@@ -7,9 +7,11 @@ from dataclasses import dataclass, field
 from .db import transaction
 from .models import (
     ApiError,
+    MAX_JSON_DEPTH,
     MAX_NAME_LENGTH,
     MAX_PAYLOAD_BYTES,
     canonical_json,
+    json_depth,
     validate_event_type,
     validate_idempotency_key,
 )
@@ -79,6 +81,7 @@ class ClaimedDelivery:
     secret: str
     event_payload: str
     attempt_number: int
+    cycle_attempts: int
     started_at: float
 
 
@@ -216,7 +219,14 @@ def accept_event(conn, idempotency_key: str, event_type: str, payload: object) -
     validate_event_type(event_type)
     if not isinstance(payload, (dict, list)):
         raise ApiError("validation_error", "Payload must be a JSON object or array.")
-    canonical = canonical_json(payload)
+    if json_depth(payload) > MAX_JSON_DEPTH:
+        raise ApiError("validation_error", "Payload nesting is too deep.")
+    try:
+        canonical = canonical_json(payload)
+    except ValueError as exc:
+        raise ApiError(
+            "validation_error", "Payload must not contain NaN or Infinity values."
+        ) from exc
     if len(canonical.encode("utf-8")) > MAX_PAYLOAD_BYTES:
         raise ApiError("validation_error", "Payload exceeds the 32 KiB limit.")
     now = time.time()
@@ -402,7 +412,7 @@ def claim_due_delivery(
     placeholders = ", ".join("?" for _ in excluded)
     condition = f" AND d.endpoint_id NOT IN ({placeholders})" if excluded else ""
     sql = (
-        "SELECT d.id, d.endpoint_id, e.url, e.secret, ev.payload"
+        "SELECT d.id, d.endpoint_id, d.cycle_attempts, e.url, e.secret, ev.payload"
         " FROM deliveries d JOIN endpoints e ON e.id = d.endpoint_id"
         " JOIN events ev ON ev.id = d.event_id"
         " WHERE d.status IN ('pending', 'retrying') AND (d.due_at IS NULL OR d.due_at <= ?)"
@@ -429,6 +439,7 @@ def claim_due_delivery(
         secret=row["secret"],
         event_payload=row["payload"],
         attempt_number=next_number,
+        cycle_attempts=row["cycle_attempts"],
         started_at=now,
     )
 
@@ -442,7 +453,7 @@ def complete_attempt(
     response_excerpt: str | None,
     next_due_at: float | None,
     terminal_status: str | None,
-    paused: bool = False,
+    pause_if_disabled: bool = False,
 ) -> None:
     now = time.time()
     with transaction(conn):
@@ -466,7 +477,15 @@ def complete_attempt(
         cycle = conn.execute(
             "SELECT cycle_attempts, due_at FROM deliveries WHERE id = ?", (delivery_id,)
         ).fetchone()
-        if paused and terminal_status is None:
+        should_pause = False
+        if pause_if_disabled and terminal_status is None:
+            endpoint_enabled = conn.execute(
+                "SELECT e.enabled FROM endpoints e JOIN deliveries d ON d.endpoint_id = e.id"
+                " WHERE d.id = ?",
+                (delivery_id,),
+            ).fetchone()["enabled"]
+            should_pause = not endpoint_enabled
+        if should_pause:
             status, due_at = "paused", cycle["due_at"]
         elif terminal_status is not None:
             status, due_at = terminal_status, None
