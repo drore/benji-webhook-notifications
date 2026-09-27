@@ -53,6 +53,12 @@ function outcomeTone(outcome: string | null): string {
     return "failed";
   return "pending";
 }
+
+function durationLabel(attempt: Attempt): string {
+  if (!attempt.finished_at) return "in flight";
+  const ms = new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime();
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
 </script>
 
 <template>
@@ -92,40 +98,63 @@ function outcomeTone(outcome: string | null): string {
       <pre data-testid="payload-json">{{ JSON.stringify(delivery.event.payload, null, 2) }}</pre>
       <h3 style="font-size: 14px; margin: 0 0 8px">Attempts</h3>
       <p v-if="!delivery.attempts.length" class="muted">No attempts recorded yet.</p>
-      <ol v-else class="attempt-list">
+      <ol v-else class="timeline">
         <li
           v-for="attempt in delivery.attempts"
           :key="attempt.id"
           data-testid="attempt-row"
-          class="attempt-row"
+          class="timeline-item"
           :data-outcome="attempt.outcome"
         >
-          <div class="attempt-head">
-            <span class="attempt-number">#{{ attempt.number }}</span>
-            <span class="status-pill" :data-status="outcomeTone(attempt.outcome)">
-              {{ attemptSummary(attempt.outcome, attempt.http_status) }}
-            </span>
-            <span class="attempt-help">
-              <button
-                type="button"
-                class="attempt-help-trigger"
-                data-testid="attempt-help"
-                aria-label="Attempt explanation"
-              >
-                ?
-              </button>
-              <span class="tip" role="tooltip">
-                <strong>{{ explain(attempt).title }}</strong>
-                <span>{{ explain(attempt).meaning }}</span>
-                <em>{{ explain(attempt).consequence }}</em>
+          <span
+            class="timeline-dot"
+            :data-tone="outcomeTone(attempt.outcome)"
+            aria-hidden="true"
+          ></span>
+          <div class="timeline-card">
+            <div class="attempt-head">
+              <span class="attempt-number">#{{ attempt.number }}</span>
+              <span class="status-pill" :data-status="outcomeTone(attempt.outcome)">
+                {{ attemptSummary(attempt.outcome, attempt.http_status) }}
               </span>
-            </span>
-            <span class="attempt-time">
-              {{ new Date(attempt.started_at).toLocaleTimeString() }} →
-              {{ attempt.finished_at ? new Date(attempt.finished_at).toLocaleTimeString() : "…" }}
-            </span>
+              <span class="attempt-help">
+                <button
+                  type="button"
+                  class="attempt-help-trigger"
+                  data-testid="attempt-help"
+                  aria-label="Attempt explanation"
+                >
+                  ?
+                </button>
+                <span class="tip" role="tooltip">
+                  <strong>{{ explain(attempt).title }}</strong>
+                  <span>{{ explain(attempt).meaning }}</span>
+                  <em>{{ explain(attempt).consequence }}</em>
+                </span>
+              </span>
+              <span class="attempt-time">
+                {{ new Date(attempt.started_at).toLocaleTimeString() }} →
+                {{
+                  attempt.finished_at
+                    ? new Date(attempt.finished_at).toLocaleTimeString()
+                    : "…"
+                }}
+                · {{ durationLabel(attempt) }}
+              </span>
+            </div>
+            <blockquote v-if="attempt.response_excerpt">{{ attempt.response_excerpt }}</blockquote>
           </div>
-          <blockquote v-if="attempt.response_excerpt">{{ attempt.response_excerpt }}</blockquote>
+        </li>
+        <li
+          v-if="delivery.status === 'retrying'"
+          data-testid="next-attempt"
+          class="timeline-item"
+        >
+          <span class="timeline-dot" data-tone="pending" aria-hidden="true"></span>
+          <div class="timeline-card muted">
+            Next attempt #{{ delivery.attempts.length + 1 }} scheduled for
+            {{ delivery.due_at ? new Date(delivery.due_at).toLocaleTimeString() : "—" }}
+          </div>
         </li>
       </ol>
       <div class="replay-area">

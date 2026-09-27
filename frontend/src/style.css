@@ -606,18 +606,67 @@ pre {
   font-size: 12.5px;
 }
 
-.attempt-list {
+.timeline {
   list-style: none;
   margin: 0 0 16px;
-  padding: 0;
+  padding: 0 0 0 24px;
+  position: relative;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
-.attempt-row {
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -24px;
+  top: 10px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pending);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.timeline-dot[data-tone="success"] {
+  background: var(--ok);
+}
+
+.timeline-dot[data-tone="retrying"] {
+  background: var(--warn);
+}
+
+.timeline-dot[data-tone="failed"] {
+  background: var(--err);
+}
+
+.timeline-dot[data-tone="pending"] {
+  background: var(--muted);
+}
+
+.timeline-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
+  background: var(--surface);
+}
+
+.timeline-card.muted {
+  color: var(--muted);
+  border-style: dashed;
 }
 
 .attempt-head {
@@ -644,7 +693,7 @@ pre {
   font-size: 12px;
 }
 
-.attempt-row blockquote {
+.timeline-card blockquote {
   margin: 8px 0 0;
   padding: 8px 10px;
   background: #f8f9fd;

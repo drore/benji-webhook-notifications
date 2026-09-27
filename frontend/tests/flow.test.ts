@@ -136,6 +136,33 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(wrapper.get('[data-testid="no-receivers"]').text()).toContain("No receivers matched");
   });
 
+  it("shows the next scheduled attempt on the timeline", async () => {
+    const stamp = "2026-09-27T12:00:00Z";
+    const api = fakeApi({
+      getDelivery: async () => ({
+        ...deliveryFixture,
+        status: "retrying",
+        due_at: "2026-09-27T12:00:10Z",
+        attempts: [
+          {
+            id: 1,
+            number: 1,
+            started_at: stamp,
+            finished_at: stamp,
+            outcome: "retryable_http",
+            http_status: 500,
+            response_excerpt: null,
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+    const next = wrapper.get('[data-testid="next-attempt"]');
+    expect(next.text()).toContain("Next attempt #2 scheduled");
+    expect(wrapper.get('[data-testid="attempt-row"]').text()).toContain("·");
+  });
+
   it("offers replay only for failed deliveries and disables it while pending", async () => {
     const replayDelivery = vi.fn(async () => ({ delivery_id: "dlv_1", status: "pending" }));
     const api = fakeApi({
