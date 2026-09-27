@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import store
 from .config import Settings, get_settings
 from .db import connect, init_schema
-from .models import ApiError, EndpointCreate
+from .models import ApiError, EndpointCreate, EventSubmit
 from .policy import PolicyError
 
 _NOT_FOUND_CODE = "not_found"
@@ -31,6 +31,27 @@ def _endpoint_dto(record: store.EndpointRecord) -> dict:
         "event_types": record.event_types,
         "enabled": record.enabled,
         "created_at": _iso(record.created_at),
+    }
+
+
+def _event_detail_dto(detail: store.EventDetail) -> dict:
+    return {
+        "id": detail.id,
+        "type": detail.type,
+        "payload": detail.payload,
+        "created_at": _iso(detail.created_at),
+        "deliveries": [
+            {
+                "id": item.id,
+                "endpoint_id": item.endpoint_id,
+                "endpoint_name": item.endpoint_name,
+                "endpoint_url": item.endpoint_url,
+                "status": item.status,
+                "due_at": _iso(item.due_at) if item.due_at is not None else None,
+                "attempts_count": item.attempts_count,
+            }
+            for item in detail.deliveries
+        ],
     }
 
 
@@ -104,6 +125,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/endpoints/{endpoint_id}/disable")
     def disable_endpoint(endpoint_id: str, conn=Depends(get_conn)):
         return _set_enabled(endpoint_id, False, conn)
+
+    @app.post("/api/events")
+    def submit_event(payload: EventSubmit, response: Response, conn=Depends(get_conn)):
+        acceptance = store.accept_event(
+            conn, payload.idempotency_key, payload.type, payload.payload
+        )
+        response.status_code = 201 if acceptance.status == "created" else 200
+        return {
+            "event_id": acceptance.event_id,
+            "deduplicated": acceptance.status == "deduplicated",
+        }
+
+    @app.get("/api/events")
+    def list_events(limit: int = 50, conn=Depends(get_conn)):
+        bounded = max(1, min(limit, 200))
+        return {
+            "items": [
+                {
+                    "id": summary.id,
+                    "type": summary.type,
+                    "created_at": _iso(summary.created_at),
+                    "deliveries": summary.deliveries,
+                }
+                for summary in store.list_events(conn, bounded)
+            ]
+        }
+
+    @app.get("/api/events/{event_id}")
+    def get_event(event_id: str, conn=Depends(get_conn)):
+        detail = store.get_event(conn, event_id)
+        if detail is None:
+            raise ApiError(_NOT_FOUND_CODE, "Event not found.", 404)
+        return _event_detail_dto(detail)
 
     return app
 

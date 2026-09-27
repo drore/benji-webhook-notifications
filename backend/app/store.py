@@ -1,10 +1,18 @@
 import json
 import secrets
+import sqlite3
 import time
 from dataclasses import dataclass, field
 
 from .db import transaction
-from .models import EndpointCreate, ApiError, MAX_NAME_LENGTH, validate_event_type
+from .models import (
+    ApiError,
+    MAX_NAME_LENGTH,
+    MAX_PAYLOAD_BYTES,
+    canonical_json,
+    validate_event_type,
+    validate_idempotency_key,
+)
 from .policy import validate_url
 from .signing import generate_secret
 
@@ -35,6 +43,32 @@ class EventSummary:
     type: str
     created_at: float
     deliveries: dict[str, int] = field(default_factory=lambda: {s: 0 for s in DELIVERY_STATUSES})
+
+
+@dataclass
+class DeliverySummary:
+    id: str
+    endpoint_id: str
+    endpoint_name: str
+    endpoint_url: str
+    status: str
+    due_at: float | None
+    attempts_count: int
+
+
+@dataclass
+class EventDetail:
+    id: str
+    type: str
+    payload: object
+    created_at: float
+    deliveries: list[DeliverySummary] = field(default_factory=list)
+
+
+@dataclass
+class Acceptance:
+    status: str  # "created" | "deduplicated"
+    event_id: str
 
 
 def _endpoint_from_row(row) -> EndpointRecord:
@@ -131,3 +165,88 @@ def list_events(conn, limit: int = 50) -> list[EventSummary]:
                 summary.deliveries[count_row["status"]] = count_row["n"]
         summaries.append(summary)
     return summaries
+
+
+def accept_event(conn, idempotency_key: str, event_type: str, payload: object) -> Acceptance:
+    validate_idempotency_key(idempotency_key)
+    validate_event_type(event_type)
+    if not isinstance(payload, (dict, list)):
+        raise ApiError("validation_error", "Payload must be a JSON object or array.")
+    canonical = canonical_json(payload)
+    if len(canonical.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+        raise ApiError("validation_error", "Payload exceeds the 32 KiB limit.")
+    now = time.time()
+    with transaction(conn):
+        existing = conn.execute(
+            "SELECT id, type, payload FROM events WHERE idempotency_key = ?",
+            (idempotency_key,),
+        ).fetchone()
+        if existing is not None:
+            return _resolve_existing(existing, event_type, canonical)
+        event_id = f"evt_{secrets.token_hex(6)}"
+        try:
+            conn.execute(
+                "INSERT INTO events (id, idempotency_key, type, payload, created_at)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (event_id, idempotency_key, event_type, canonical, now),
+            )
+        except sqlite3.IntegrityError:
+            existing = conn.execute(
+                "SELECT id, type, payload FROM events WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            return _resolve_existing(existing, event_type, canonical)
+        endpoints = conn.execute(
+            "SELECT id, event_types FROM endpoints WHERE enabled = 1"
+        ).fetchall()
+        for endpoint in endpoints:
+            if event_type in json.loads(endpoint["event_types"]):
+                conn.execute(
+                    "INSERT INTO deliveries (id, event_id, endpoint_id, status, due_at,"
+                    " cycle_attempts, lease_expires_at, created_at, updated_at)"
+                    " VALUES (?, ?, ?, 'pending', ?, 0, NULL, ?, ?)",
+                    (f"dlv_{secrets.token_hex(6)}", event_id, endpoint["id"], now, now, now),
+                )
+    return Acceptance(status="created", event_id=event_id)
+
+
+def _resolve_existing(existing, event_type: str, canonical: str) -> Acceptance:
+    if existing["type"] == event_type and existing["payload"] == canonical:
+        return Acceptance(status="deduplicated", event_id=existing["id"])
+    raise ApiError(
+        "idempotency_conflict",
+        "This idempotency key was already used with different content.",
+        409,
+    )
+
+
+def get_event(conn, event_id: str) -> EventDetail | None:
+    row = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+    if row is None:
+        return None
+    delivery_rows = conn.execute(
+        "SELECT d.id, d.endpoint_id, d.status, d.due_at, e.name AS endpoint_name,"
+        " e.url AS endpoint_url,"
+        " (SELECT COUNT(*) FROM attempts a WHERE a.delivery_id = d.id) AS attempts_count"
+        " FROM deliveries d JOIN endpoints e ON e.id = d.endpoint_id"
+        " WHERE d.event_id = ? ORDER BY e.name",
+        (event_id,),
+    ).fetchall()
+    return EventDetail(
+        id=row["id"],
+        type=row["type"],
+        payload=json.loads(row["payload"]),
+        created_at=row["created_at"],
+        deliveries=[
+            DeliverySummary(
+                id=delivery["id"],
+                endpoint_id=delivery["endpoint_id"],
+                endpoint_name=delivery["endpoint_name"],
+                endpoint_url=delivery["endpoint_url"],
+                status=delivery["status"],
+                due_at=delivery["due_at"],
+                attempts_count=delivery["attempts_count"],
+            )
+            for delivery in delivery_rows
+        ],
+    )
