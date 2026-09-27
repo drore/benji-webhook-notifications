@@ -17,7 +17,7 @@ No database, broker, or hosted service is required. Everything runs on loopback:
 
 ```sh
 uv sync --python 3.12 --group dev
-cd frontend && npm ci && cd ..
+cd frontend && npm ci && npx playwright install chromium && cd ..
 ```
 
 ## Run the demo
@@ -63,9 +63,10 @@ It creates both endpoints, enables them, prints the secrets for the receiver for
 ```sh
 uv run pytest -q                       # backend: units + integration against a real local receiver
 cd frontend && npm test && npm run build
+python3 scripts/run_e2e.py             # browser E2E: boots all three services on free ports
 ```
 
-The backend suite covers signature verification and tamper rejection, URL policy, fan-out and deduplication (including a concurrent same-key race), retry classification with observed backoff, timeout handling, redirect non-following, replay with attempt history, disable/resume including mid-flight attempts, expired-lease recovery, concurrency limits, and a full reviewer journey. Frontend tests cover API error mapping, the one-time secret banner, composer deduplication/conflict/uncertain states, polling staleness, fan-out rendering, attempt labels, and replay gating.
+The backend suite covers signature verification and tamper rejection, URL policy, fan-out and deduplication (including a concurrent same-key race), retry classification with observed backoff, timeout handling, redirect non-following, replay with attempt history, disable/resume including mid-flight attempts, expired-lease recovery, concurrency limits, and a full reviewer journey. Frontend tests cover API error mapping, the one-time secret banner, composer deduplication/conflict/uncertain states, polling staleness, fan-out rendering, attempt labels, and replay gating. The Playwright suite (chromium, serial) drives the real browser against all three services: endpoint lifecycle and the one-time secret, fan-out with deduplicated resubmission, a fail-once retry reaching Delivered without manual refresh, verified attempt history with replay on the same delivery, tampered-signature rejection at the receiver, disable and no-receiver routing, and the empty/pending/stale UI states.
 
 ## Scope and safety
 

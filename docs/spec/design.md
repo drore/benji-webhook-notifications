@@ -140,7 +140,8 @@ Simple event-centered fan-out view in plain CSS with a Benji-inspired palette (n
 - **Unit (pytest):** canonical-JSON identity, key/type/payload validation, destination policy, signature computation/verification, retry classification and backoff schedule, status transitions.
 - **Integration (pytest, real HTTP):** the API plus worker against a real receiver (uvicorn on a free port, temp SQLite): fan-out counts, concurrent same-key dedupe, unique `(event_id, endpoint_id)` under concurrency, fail-once retry with observed backoff, three-attempt exhaustion, replay keeps delivery id and appends attempts, disable pauses/resumes and blocks replay, expired-lease recovery after restart, receiver signature acceptance/rejection, destination rejection. Tests override retry delays for speed; defaults 2s/4s are asserted in the schedule unit test.
 - **Frontend (Vitest):** API error mapping, composer pending/dedup/conflict/uncertain states, polling staleness, replay gating, empty/loading rendering.
-- **Manual walkthrough:** documented in the README; success, fail-once, always-fail, replay, signature rejection, and dedup via browser and receiver page. No browser-automation suite (explicit cut).
+- **Browser (Playwright, chromium):** `python3 scripts/run_e2e.py` boots the receiver, API/worker, and dashboard on free ports with a temporary database and fast retry delays, then runs `frontend/e2e`: endpoint lifecycle and one-time secret, fan-out with deduplicated resubmission, live retry to delivered without refresh, verified failure history and replay on the same delivery, tampered-signature rejection, disable/no-match routing, and empty/pending/stale states.
+- **Manual walkthrough:** documented in the README; success, fail-once, always-fail, replay, signature rejection, and dedup via browser and receiver page.
 
 ## 10. Acceptance criteria
 
@@ -171,7 +172,7 @@ Process: SDD-TDD in small working slices; each slice names its observable behavi
 
 ## 12. Cuts and production gaps
 
-Cut from this attempt: multi-tenant authentication and RBAC, rate limiting, editing endpoint URL/subscriptions after creation, workflow/version/cutover/archive concepts, secret rotation, configurable retry jitter, SSE/websockets (polling chosen), browser-automation tests, load testing, distributed workers, external queues. Production design would revisit each: authenticated customer scope, public HTTPS destination policy with DNS/IP validation, managed secret storage and rotation, tuned backoff with jitter, retention and redaction policy, horizontal dispatch with a real broker, and measured capacity targets. Local evidence never implies production readiness.
+Cut from this attempt: multi-tenant authentication and RBAC, rate limiting, editing endpoint URL/subscriptions after creation, workflow/version/cutover/archive concepts, secret rotation, configurable retry jitter, SSE/websockets (polling chosen), cross-browser matrix (chromium only), load testing, distributed workers, external queues. Production design would revisit each: authenticated customer scope, public HTTPS destination policy with DNS/IP validation, managed secret storage and rotation, tuned backoff with jitter, retention and redaction policy, horizontal dispatch with a real broker, and measured capacity targets. Local evidence never implies production readiness.
 
 ## 13. Decisions needing review before freezing
 

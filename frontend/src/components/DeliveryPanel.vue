@@ -54,7 +54,7 @@ const canReplay = computed(
         <dt>State</dt>
         <dd :data-status="delivery.status">{{ STATUS_LABELS[delivery.status] }}</dd>
         <dt>Delivery ID</dt>
-        <dd><code>{{ delivery.id }}</code></dd>
+        <dd data-testid="delivery-id"><code>{{ delivery.id }}</code></dd>
         <dt>Next due</dt>
         <dd>{{ delivery.due_at ?? "—" }}</dd>
       </dl>

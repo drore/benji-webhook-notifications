@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "test": "vitest run",
+    "e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
     "vue": "^3.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^26.6.3",
     "@vitejs/plugin-vue": "^5.2.0",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.0",

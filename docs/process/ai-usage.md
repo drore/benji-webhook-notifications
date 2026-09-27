@@ -13,6 +13,6 @@ The lean design implemented here builds directly on the specification Dror devel
 
 - **Environment:** opencode CLI with the `deepseek-flash` model. The work was executed as specification-driven, test-driven slices with a commit per slice.
 - **Trail:** the specification (`docs/spec/design.md`), the implementation plan (`docs/plan/implementation-plan.md`), the worklog (`docs/process/worklog.md`), and the git history. The execution ledger is scratch and git-ignored.
-- **Results on the final candidate:** `uv run pytest -q` → 57 passed; `npm test` → 16 passed (5 files); `npm run build` → succeeded; documented boot commands smoke-tested on spare ports (API health 200, receiver page 200).
+- **Results on the final candidate:** `uv run pytest -q` → 57 passed; `npm test` → 16 passed (5 files); `npm run build` → succeeded; `python3 scripts/run_e2e.py` → 9 Playwright browser tests passed; documented boot commands smoke-tested on spare ports (API health 200, receiver page 200).
 - **Independent review:** one fresh-context whole-branch review found 2 Critical and 4 Important issues (replay cycle budget, malformed-URL 500s, NaN/nesting payloads, wrong error code on body-parse failures, a disable/resume race, and non-polling detail views); all were fixed with tests written first. Nine minor findings were deferred and recorded in the execution ledger.
 - **Limits:** the manual browser walkthrough has not yet been run end-to-end by a human; local checks do not establish production readiness.
