@@ -161,6 +161,17 @@ class Env:
         finally:
             conn.close()
 
+    def concurrent_replays(self, delivery_id, count):
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=count) as pool:
+            return list(
+                pool.map(
+                    lambda _: self.client.post(f"/api/deliveries/{delivery_id}/replay"),
+                    range(count),
+                )
+            )
+
     def drain_worker(self, timeout=10):
         import asyncio
 

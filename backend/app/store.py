@@ -338,6 +338,33 @@ def get_delivery(conn, delivery_id: str) -> DeliveryDetail | None:
     )
 
 
+@dataclass
+class ReplayResult:
+    ok: bool
+    reason: str | None = None
+
+
+def replay_delivery(conn, delivery_id: str, now: float) -> ReplayResult:
+    with transaction(conn):
+        row = conn.execute(
+            "SELECT d.status, e.enabled FROM deliveries d"
+            " JOIN endpoints e ON e.id = d.endpoint_id WHERE d.id = ?",
+            (delivery_id,),
+        ).fetchone()
+        if row is None:
+            return ReplayResult(ok=False, reason="not_found")
+        if row["status"] != "failed":
+            return ReplayResult(ok=False, reason="not_failed")
+        if not row["enabled"]:
+            return ReplayResult(ok=False, reason="paused_endpoint")
+        conn.execute(
+            "UPDATE deliveries SET status = 'pending', due_at = ?, cycle_attempts = 0,"
+            " lease_expires_at = NULL, claim_started_at = NULL, updated_at = ? WHERE id = ?",
+            (now, now, delivery_id),
+        )
+    return ReplayResult(ok=True)
+
+
 def claim_due_delivery(
     conn, now: float, excluded_endpoint_ids: set[str], lease_seconds: float
 ) -> ClaimedDelivery | None:

@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 
 import asyncio
+import time
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -212,6 +213,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if detail is None:
             raise ApiError(_NOT_FOUND_CODE, "Delivery not found.", 404)
         return _delivery_detail_dto(detail)
+
+    @app.post("/api/deliveries/{delivery_id}/replay", status_code=202)
+    def replay_delivery(delivery_id: str, conn=Depends(get_conn)):
+        result = store.replay_delivery(conn, delivery_id, time.time())
+        if not result.ok:
+            if result.reason == "not_found":
+                raise ApiError(_NOT_FOUND_CODE, "Delivery not found.", 404)
+            message = (
+                "The endpoint is disabled; resume it before replaying."
+                if result.reason == "paused_endpoint"
+                else "Only failed deliveries can be replayed."
+            )
+            raise ApiError("replay_unavailable", message, 409)
+        return {"delivery_id": delivery_id, "status": "pending"}
 
     return app
 
