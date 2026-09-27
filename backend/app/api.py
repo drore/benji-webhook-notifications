@@ -228,6 +228,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise ApiError("replay_unavailable", message, 409)
         return {"delivery_id": delivery_id, "status": "pending"}
 
+    @app.get("/api/overview")
+    def get_overview(conn=Depends(get_conn)):
+        summary = store.overview(conn)
+        return {
+            "failed_count": summary.failed_count,
+            "retrying_count": summary.retrying_count,
+            "earliest_due_at": _iso(summary.earliest_due_at)
+            if summary.earliest_due_at is not None
+            else None,
+            "latest_event": {
+                "id": summary.latest_event_id,
+                "type": summary.latest_event_type,
+                "created_at": _iso(summary.latest_event_created_at),
+            }
+            if summary.latest_event_id is not None
+            else None,
+        }
+
     return app
 
 

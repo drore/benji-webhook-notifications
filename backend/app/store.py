@@ -344,6 +344,36 @@ class ReplayResult:
     reason: str | None = None
 
 
+@dataclass
+class Overview:
+    failed_count: int
+    retrying_count: int
+    earliest_due_at: float | None
+    latest_event_id: str | None
+    latest_event_type: str | None
+    latest_event_created_at: float | None
+
+
+def overview(conn) -> Overview:
+    failed = conn.execute(
+        "SELECT COUNT(*) AS n FROM deliveries WHERE status = 'failed'"
+    ).fetchone()["n"]
+    retrying = conn.execute(
+        "SELECT COUNT(*) AS n, MIN(due_at) AS earliest FROM deliveries WHERE status = 'retrying'"
+    ).fetchone()
+    latest = conn.execute(
+        "SELECT id, type, created_at FROM events ORDER BY created_at DESC, id DESC LIMIT 1"
+    ).fetchone()
+    return Overview(
+        failed_count=failed,
+        retrying_count=retrying["n"],
+        earliest_due_at=retrying["earliest"],
+        latest_event_id=latest["id"] if latest else None,
+        latest_event_type=latest["type"] if latest else None,
+        latest_event_created_at=latest["created_at"] if latest else None,
+    )
+
+
 def replay_delivery(conn, delivery_id: str, now: float) -> ReplayResult:
     with transaction(conn):
         row = conn.execute(
