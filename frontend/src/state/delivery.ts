@@ -12,6 +12,24 @@ export const STATUS_LABELS: Record<DeliveryStatus, string> = {
   failed: "Failed",
 };
 
+export const STATUS_COLORS: Record<DeliveryStatus, string> = {
+  pending: "#64748b",
+  in_progress: "#2563eb",
+  retrying: "#b45309",
+  paused: "#7c3aed",
+  succeeded: "#15803d",
+  failed: "#dc2626",
+};
+
+export const STATUS_GLYPHS: Record<DeliveryStatus, string> = {
+  pending: "◌",
+  in_progress: "↻",
+  retrying: "↻",
+  paused: "‖",
+  succeeded: "✓",
+  failed: "✕",
+};
+
 export function attemptSummary(outcome: string | null, httpStatus: number | null): string {
   switch (outcome) {
     case "success":

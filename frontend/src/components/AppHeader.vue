@@ -13,23 +13,36 @@ onMounted(async () => {
   startPolling();
 });
 onUnmounted(() => stopPolling());
+
+function formatDue(value: string | null | undefined): string {
+  if (!value) return "";
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 </script>
 
 <template>
-  <div class="app-header">
-    <div class="signals">
-      <span class="signal">
-        Needs attention
-        <strong data-testid="failed-count">{{ overview?.failed_count ?? 0 }}</strong>
-      </span>
-      <span class="signal">
-        Retrying
-        <strong data-testid="retrying-count">{{ overview?.retrying_count ?? 0 }}</strong>
-        <small v-if="overview?.earliest_due_at"> next {{ overview.earliest_due_at }}</small>
-      </span>
-    </div>
-    <p v-if="stale" data-testid="stale-banner" class="stale">
-      Status may be stale — last updated {{ lastUpdatedAt?.toLocaleTimeString() ?? "never" }}.
-    </p>
+  <div class="signals">
+    <span
+      class="signal-pill"
+      :class="overview?.failed_count ? 'signal-danger' : 'signal-neutral'"
+    >
+      <span class="signal-dot" aria-hidden="true"></span>
+      Needs attention
+      <strong data-testid="failed-count">{{ overview?.failed_count ?? 0 }}</strong>
+    </span>
+    <span class="signal-pill signal-warn">
+      <span class="signal-dot" aria-hidden="true"></span>
+      Retrying
+      <strong data-testid="retrying-count">{{ overview?.retrying_count ?? 0 }}</strong>
+      <small v-if="overview?.earliest_due_at">next {{ formatDue(overview.earliest_due_at) }}</small>
+    </span>
+    <span v-if="overview?.latest_event" class="signal-pill signal-neutral">
+      Latest <code>{{ overview.latest_event.type }}</code>
+    </span>
+    <span v-if="stale" data-testid="stale-banner" class="signal-pill signal-danger">
+      <span class="signal-dot" aria-hidden="true"></span>
+      Status may be stale — last updated
+      {{ lastUpdatedAt?.toLocaleTimeString() ?? "never" }}
+    </span>
   </div>
 </template>

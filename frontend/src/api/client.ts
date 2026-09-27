@@ -9,8 +9,8 @@ export interface Endpoint {
 
 export interface EndpointCreate {
   name: string;
-  url: string;
   event_types: string[];
+  url?: string;
 }
 
 export interface DeliveryCounts {

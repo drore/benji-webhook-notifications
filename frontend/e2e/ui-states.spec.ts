@@ -13,12 +13,14 @@ test.describe("async UI states", () => {
     );
     await page.goto("/");
     await expect(
-      page.getByText("No endpoints yet — create one to start receiving events."),
+      page.getByText("No endpoints yet. To start receiving webhooks:"),
     ).toBeVisible();
     await expect(
-      page.getByText("No events yet — publish one above to see it fan out."),
+      page.getByText("No events yet — publish one on the right to see it fan out."),
     ).toBeVisible();
-    await expect(page.getByText("Select an event to see its delivery branches.")).toBeVisible();
+    await expect(
+      page.getByText("Select an event from Recent events to follow its delivery journey."),
+    ).toBeVisible();
   });
 
   test("REQ-009 the publish action disables while its request is pending", async ({ page }) => {

@@ -32,9 +32,6 @@ describe("EndpointsPanel", () => {
     const wrapper = mount(EndpointsPanel, { props: { api } });
     await flushPromises();
     await wrapper.get('input[aria-label="Endpoint name"]').setValue("CRM");
-    await wrapper
-      .get('input[aria-label="Endpoint URL"]')
-      .setValue("http://127.0.0.1:9000/webhooks/crm");
     await wrapper.get('[aria-label="Event types"]').setValue("a");
     await wrapper.get('button[data-action="create-endpoint"]').trigger("click");
     await flushPromises();

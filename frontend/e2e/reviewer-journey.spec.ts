@@ -19,11 +19,7 @@ test.describe("reviewer journey", () => {
     const suffix = uniqueSuffix();
     const name = `E2E Secret ${suffix}`;
     await page.goto("/");
-    const secret = await createEndpoint(page, {
-      name,
-      slug: `e2e-secret-${suffix}`,
-      types: ["campaign_updated"],
-    });
+    const secret = await createEndpoint(page, { name, types: ["campaign_updated"] });
     await expect(page.getByText(secret)).toHaveCount(0);
     const row = endpointRow(page, name);
     await expect(row).toContainText("disabled");
@@ -46,16 +42,14 @@ test.describe("reviewer journey", () => {
     await page.goto("/");
     const crmSecret = await createEndpoint(page, {
       name: crmName,
-      slug: `e2e-crm-${suffix}`,
       types: ["campaign_updated"],
     });
     const ledgerSecret = await createEndpoint(page, {
       name: ledgerName,
-      slug: `e2e-ledger-${suffix}`,
       types: ["campaign_updated", "member_account_linked"],
     });
-    await configureReceiver(request, `e2e-crm-${suffix}`, crmSecret, "success");
-    await configureReceiver(request, `e2e-ledger-${suffix}`, ledgerSecret, "success");
+    await configureReceiver(request, crmSecret, "success");
+    await configureReceiver(request, ledgerSecret, "success");
     await enableEndpoint(page, crmName);
     await enableEndpoint(page, ledgerName);
     await publishEvent(page, {
@@ -83,10 +77,9 @@ test.describe("reviewer journey", () => {
     await page.goto("/");
     const secret = await createEndpoint(page, {
       name,
-      slug: `e2e-retry-${suffix}`,
       types: ["member_account_linked"],
     });
-    await configureReceiver(request, `e2e-retry-${suffix}`, secret, "fail_once");
+    await configureReceiver(request, secret, "fail_once");
     await enableEndpoint(page, name);
     await publishEvent(page, {
       type: "member_account_linked",
@@ -111,10 +104,9 @@ test.describe("reviewer journey", () => {
     await page.goto("/");
     const secret = await createEndpoint(page, {
       name,
-      slug: `e2e-fail-${suffix}`,
       types: ["reward_transaction_created"],
     });
-    await configureReceiver(request, `e2e-fail-${suffix}`, secret, "always_fail");
+    await configureReceiver(request, secret, "always_fail");
     await enableEndpoint(page, name);
     await publishEvent(page, {
       type: "reward_transaction_created",
@@ -143,10 +135,8 @@ test.describe("reviewer journey", () => {
   });
 
   test("REQ-003 the receiver rejects a tampered signature", async ({ request, page }) => {
-    const suffix = uniqueSuffix();
-    const slug = `e2e-tamper-${suffix}`;
-    await configureReceiver(request, slug, "whsec_tamper_fixture_secret", "success");
-    const response = await request.post(`${RECEIVER_URL}/webhooks/${slug}`, {
+    await configureReceiver(request, "whsec_tamper_fixture_secret", "success");
+    const response = await request.post(`${RECEIVER_URL}/webhooks/probe`, {
       headers: {
         "X-Webhook-Delivery-Id": "dlv_tampered",
         "X-Webhook-Timestamp": "1700000000",
@@ -160,7 +150,7 @@ test.describe("reviewer journey", () => {
     await expect(row).toContainText("rejected");
   });
 
-  test("REQ-006/009 disabling stops new routing and unmatched events persist without receivers", async ({
+  test("REQ-006/009 disabling stops new routing and unmatched events get no receivers", async ({
     page,
     request,
   }) => {
@@ -169,10 +159,9 @@ test.describe("reviewer journey", () => {
     await page.goto("/");
     const secret = await createEndpoint(page, {
       name,
-      slug: `e2e-disable-${suffix}`,
       types: ["campaign_updated"],
     });
-    await configureReceiver(request, `e2e-disable-${suffix}`, secret, "success");
+    await configureReceiver(request, secret, "success");
     await enableEndpoint(page, name);
     await publishEvent(page, {
       type: "custom",
@@ -181,6 +170,9 @@ test.describe("reviewer journey", () => {
     });
     await selectLatestEvent(page, `e2e_probe_${suffix}`);
     await expect(page.getByTestId("no-receivers")).toContainText("No receivers matched");
+    await expect(
+      page.getByTestId("event-row").filter({ hasText: `e2e_probe_${suffix}` }).first(),
+    ).toContainText("no receivers");
     await disableEndpoint(page, name);
     await publishEvent(page, {
       type: "campaign_updated",

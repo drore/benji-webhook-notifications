@@ -20,7 +20,7 @@ class ApiError(Exception):
 
 class EndpointCreate(BaseModel):
     name: str
-    url: str
+    url: str | None = None
     event_types: list[str]
 
 

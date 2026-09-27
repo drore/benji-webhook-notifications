@@ -29,8 +29,7 @@ def test_receiver_verifies_dedupes_and_behaves():
     async def flow():
         ac = httpx.AsyncClient(transport=httpx.ASGITransport(app=receiver), base_url="http://r")
         await ac.post(
-            "/api/config",
-            json={"slug": "crm", "secret": "whsec_test", "behavior": "fail_once"},
+            "/api/config", json={"secret": "whsec_test", "behavior": "fail_once"}
         )
         ts = int(time.time())
         body = b'{"a":1}'
@@ -61,17 +60,19 @@ def test_receiver_verifies_dedupes_and_behaves():
     anyio.run(flow)
 
 
-def test_receiver_redirect_and_unknown_slug():
+def test_receiver_accepts_any_path_but_requires_a_configured_secret():
     import anyio
 
     receiver = create_receiver_app()
 
     async def flow():
         ac = httpx.AsyncClient(transport=httpx.ASGITransport(app=receiver), base_url="http://r")
-        await ac.post("/api/config", json={"slug": "hop", "secret": "s", "behavior": "redirect"})
-        r = await _post(receiver, "hop", b"{}", "s", "dlv_r", int(time.time()))
-        assert r.status_code == 302
-        unknown = await _post(receiver, "nope", b"{}", "s", "dlv_x", int(time.time()))
-        assert unknown.status_code == 404
+        await ac.post("/api/config", json={"secret": "whsec_known", "behavior": "redirect"})
+        known = await _post(receiver, "any-path-ep_123", b"{}", "whsec_known", "dlv_r", int(time.time()))
+        assert known.status_code == 302
+        unknown = await _post(
+            receiver, "any-path-ep_123", b"{}", "whsec_other", "dlv_x", int(time.time())
+        )
+        assert unknown.status_code == 401
 
     anyio.run(flow)

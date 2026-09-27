@@ -14,6 +14,13 @@ def test_create_returns_secret_once(client):
     assert len(listed) == 1 and "secret" not in listed[0]
 
 
+def test_create_generates_url_from_endpoint_id_when_omitted(client):
+    response = client.post("/api/endpoints", json={"name": "CRM", "event_types": ["a"]})
+    assert response.status_code == 201, response.text
+    endpoint = response.json()["endpoint"]
+    assert endpoint["url"] == f"http://127.0.0.1:9000/webhooks/{endpoint['id']}"
+
+
 def test_create_validates_input(client):
     bad = client.post(
         "/api/endpoints",

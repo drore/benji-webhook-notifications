@@ -8,7 +8,11 @@ import type { DashboardApi } from "../src/api/client";
 afterEach(() => vi.restoreAllMocks());
 
 function fakeApi(overrides: Partial<DashboardApi> = {}): DashboardApi {
-  return { ...createDashboardApi(), ...overrides };
+  return {
+    ...createDashboardApi(),
+    listEndpoints: async () => ({ items: [] }),
+    ...overrides,
+  } as DashboardApi;
 }
 
 async function submitValidEvent(wrapper: ReturnType<typeof mount>) {
@@ -57,5 +61,44 @@ describe("EventComposer", () => {
     const wrapper = mount(EventComposer, { props: { api } });
     await submitValidEvent(wrapper);
     expect(wrapper.get('[data-testid="conflict"]').text()).toContain("different content");
+  });
+
+  it("warns when no enabled endpoint subscribes to the selected type", async () => {
+    const api = fakeApi();
+    const wrapper = mount(EventComposer, { props: { api } });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="no-subscribers"]').text()).toContain(
+      "No enabled endpoint subscribes",
+    );
+  });
+
+  it("tells how many enabled endpoints will receive the event", async () => {
+    const api = fakeApi({
+      listEndpoints: async () => ({
+        items: [
+          {
+            id: "ep_1",
+            name: "CRM",
+            url: "http://127.0.0.1:9000/webhooks/ep_1",
+            event_types: ["reward_transaction_created"],
+            enabled: true,
+            created_at: "2026-09-27T12:00:00Z",
+          },
+          {
+            id: "ep_2",
+            name: "Ledger",
+            url: "http://127.0.0.1:9000/webhooks/ep_2",
+            event_types: ["campaign_updated"],
+            enabled: true,
+            created_at: "2026-09-27T12:00:00Z",
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventComposer, { props: { api } });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="subscriber-hint"]').text()).toContain(
+      "1 enabled endpoint(s)",
+    );
   });
 });

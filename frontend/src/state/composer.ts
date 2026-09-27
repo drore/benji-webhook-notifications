@@ -20,6 +20,22 @@ export function createComposerState(api: DashboardApi) {
   const submissionKey = ref(newSubmissionKey());
   const submitting = ref(false);
   const outcome = ref<ComposerOutcome | null>(null);
+  const matchCount = ref<number | null>(null);
+
+  async function refreshMatches(type: string): Promise<void> {
+    if (!type) {
+      matchCount.value = null;
+      return;
+    }
+    try {
+      const response = await api.listEndpoints();
+      matchCount.value = response.items.filter(
+        (endpoint) => endpoint.enabled && endpoint.event_types.includes(type),
+      ).length;
+    } catch {
+      matchCount.value = null;
+    }
+  }
 
   async function submit(): Promise<void> {
     if (submitting.value) return;
@@ -65,5 +81,15 @@ export function createComposerState(api: DashboardApi) {
     outcome.value = null;
   }
 
-  return { eventType, payloadText, submissionKey, submitting, outcome, submit, newKey };
+  return {
+    eventType,
+    payloadText,
+    submissionKey,
+    submitting,
+    outcome,
+    matchCount,
+    refreshMatches,
+    submit,
+    newKey,
+  };
 }

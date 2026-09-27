@@ -135,17 +135,18 @@ def create_endpoint(
         raise ApiError("validation_error", "At least one event type is required.")
     for event_type in event_types:
         validate_event_type(event_type)
-    slug = validate_url(url, receiver_origin)
-    if not slug:
-        raise ApiError("validation_error", "A webhook path slug is required.")
     endpoint_id = f"ep_{secrets.token_hex(6)}"
+    target_url = url or f"{receiver_origin}/webhooks/{endpoint_id}"
+    slug = validate_url(target_url, receiver_origin)
+    if not slug:
+        raise ApiError("validation_error", "A webhook path is required.")
     secret = generate_secret()
     now = time.time()
     with transaction(conn):
         conn.execute(
             "INSERT INTO endpoints (id, name, url, event_types, secret, enabled, created_at)"
             " VALUES (?, ?, ?, ?, ?, 0, ?)",
-            (endpoint_id, normalized_name, url, json.dumps(event_types), secret, now),
+            (endpoint_id, normalized_name, target_url, json.dumps(event_types), secret, now),
         )
     row = conn.execute("SELECT * FROM endpoints WHERE id = ?", (endpoint_id,)).fetchone()
     return _endpoint_from_row(row), secret

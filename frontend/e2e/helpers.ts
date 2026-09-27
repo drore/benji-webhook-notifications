@@ -9,12 +9,11 @@ export function uniqueSuffix(): string {
 
 export async function configureReceiver(
   request: APIRequestContext,
-  slug: string,
   secret: string,
   behavior: string,
 ): Promise<void> {
   const response = await request.post(`${RECEIVER_URL}/api/config`, {
-    data: { slug, secret, behavior },
+    data: { secret, behavior },
   });
   expect(response.ok()).toBeTruthy();
 }
@@ -25,12 +24,9 @@ export function endpointRow(page: Page, name: string): Locator {
 
 export async function createEndpoint(
   page: Page,
-  options: { name: string; slug: string; types: string[] },
+  options: { name: string; types: string[] },
 ): Promise<string> {
   await page.getByLabel("Endpoint name").fill(options.name);
-  await page
-    .getByLabel("Endpoint URL")
-    .fill(`${RECEIVER_URL}/webhooks/${options.slug}`);
   await page.getByLabel("Event types").fill(options.types.join(", "));
   await page.getByRole("button", { name: "Create endpoint" }).click();
   const banner = page.getByTestId("secret-banner");

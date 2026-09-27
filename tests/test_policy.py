@@ -8,6 +8,7 @@ ORIGIN = "http://127.0.0.1:9000"
 def test_accepts_only_exact_origin_webhook_paths():
     assert validate_url("http://127.0.0.1:9000/webhooks/crm", ORIGIN) == "crm"
     assert validate_url("http://127.0.0.1:9000/webhooks/ledger-2", ORIGIN) == "ledger-2"
+    assert validate_url("http://127.0.0.1:9000/webhooks/ep_abc123", ORIGIN) == "ep_abc123"
 
 
 @pytest.mark.parametrize(
@@ -21,7 +22,6 @@ def test_accepts_only_exact_origin_webhook_paths():
         "http://[::1:9000/webhooks/crm",
         "http://127.0.0.1:9000/admin",
         "http://127.0.0.1:9000/Webhooks/crm",
-        "http://127.0.0.1:9000/webhooks/UPPER",
         "http://127.0.0.1:9000/webhooks/crm?x=1",
         "http://127.0.0.1:9000/webhooks/crm#f",
         "http://user:pw@127.0.0.1:9000/webhooks/crm",

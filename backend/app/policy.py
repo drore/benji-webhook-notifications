@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urlsplit
 
-SLUG_PATTERN = re.compile(r"^[a-z0-9-]{1,32}$")
+PATH_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 WEBHOOK_PATH_PREFIX = "/webhooks/"
 
 
@@ -33,6 +33,6 @@ def validate_url(url: str, receiver_origin: str) -> str:
     if not parsed.path.startswith(WEBHOOK_PATH_PREFIX):
         raise PolicyError("Only /webhooks/ receiver paths are allowed.")
     slug = parsed.path[len(WEBHOOK_PATH_PREFIX) :]
-    if "/" in slug or not SLUG_PATTERN.match(slug):
-        raise PolicyError("The webhook path must be a single lowercase slug.")
+    if "/" in slug or not PATH_SEGMENT_PATTERN.match(slug):
+        raise PolicyError("The webhook path must be a single URL-safe segment.")
     return slug

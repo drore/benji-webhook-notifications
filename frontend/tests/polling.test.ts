@@ -79,4 +79,29 @@ describe("polling and staleness", () => {
     await row.trigger("click");
     expect(wrapper.emitted("select")?.[0]).toEqual(["evt_1"]);
   });
+
+  it("marks events with no receivers", async () => {
+    const api = fakeApi({
+      listEvents: async () => ({
+        items: [
+          {
+            id: "evt_empty",
+            type: "campaign_updated",
+            created_at: "2026-09-27T12:00:00Z",
+            deliveries: {
+              pending: 0,
+              in_progress: 0,
+              retrying: 0,
+              paused: 0,
+              succeeded: 0,
+              failed: 0,
+            },
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventsList, { props: { api, selectedEventId: null } });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="no-receivers-chip"]').text()).toContain("no receivers");
+  });
 });

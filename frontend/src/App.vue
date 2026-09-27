@@ -28,15 +28,28 @@ onMounted(async () => {
 </script>
 
 <template>
-  <header>
-    <h1>Benji webhook operations</h1>
-    <p data-testid="api-status" :hidden="reachable">{{ status }}</p>
-  </header>
-  <main>
-    <AppHeader :api="api" />
-    <div class="layout">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <div>
+          <h1>Webhook operations</h1>
+          <p class="brand-sub">Local demo · loopback only · single customer</p>
+        </div>
+      </div>
+      <AppHeader :api="api" />
+    </header>
+    <p v-if="!reachable" data-testid="api-status" class="banner banner-error">
+      {{ status }}
+    </p>
+    <main class="layout">
       <div class="column">
-        <EventComposer :api="api" />
+        <EventFlow
+          :api="api"
+          :event-id="selectedEventId"
+          @select-delivery="selectedDeliveryId = $event"
+        />
+        <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
         <EventsList
           :api="api"
           :selected-event-id="selectedEventId"
@@ -46,15 +59,10 @@ onMounted(async () => {
           "
         />
       </div>
-      <div class="column">
-        <EventFlow
-          :api="api"
-          :event-id="selectedEventId"
-          @select-delivery="selectedDeliveryId = $event"
-        />
-        <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
+      <aside class="column">
+        <EventComposer :api="api" />
         <EndpointsPanel :api="api" />
-      </div>
-    </div>
-  </main>
+      </aside>
+    </main>
+  </div>
 </template>
