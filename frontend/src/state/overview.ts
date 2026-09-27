@@ -1,0 +1,47 @@
+import { ref } from "vue";
+
+import { ApiError } from "../api/client";
+import type { DashboardApi, Overview } from "../api/client";
+
+const DEFAULT_POLL_MS = 2000;
+
+export function createOverviewState(api: DashboardApi) {
+  const overview = ref<Overview | null>(null);
+  const loading = ref(false);
+  const stale = ref(false);
+  const lastUpdatedAt = ref<Date | null>(null);
+  const error = ref<string | null>(null);
+  let timer: number | null = null;
+
+  async function load(): Promise<void> {
+    loading.value = true;
+    try {
+      overview.value = await api.getOverview();
+      stale.value = false;
+      lastUpdatedAt.value = new Date();
+      error.value = null;
+    } catch (cause) {
+      stale.value = true;
+      error.value = cause instanceof ApiError ? cause.message : "Could not load status.";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function startPolling(intervalMs = DEFAULT_POLL_MS): void {
+    stopPolling();
+    void load();
+    timer = window.setInterval(() => {
+      if (!document.hidden) void load();
+    }, intervalMs);
+  }
+
+  function stopPolling(): void {
+    if (timer !== null) {
+      window.clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  return { overview, loading, stale, lastUpdatedAt, error, load, startPolling, stopPolling };
+}
