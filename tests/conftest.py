@@ -141,6 +141,25 @@ class Env:
     def receiver_request_count(self):
         return len(self.receiver.requests())
 
+    def deliver_once(self, delivery_id=None, timeout=10):
+        import asyncio
+
+        deadline = time_module.time() + timeout
+        while time_module.time() < deadline:
+            asyncio.run(self.worker.tick())
+            if delivery_id is not None:
+                detail = self.get_delivery(delivery_id)
+                if detail["status"] in ("succeeded", "failed", "paused"):
+                    return detail
+            else:
+                details = [self.get_delivery(row["id"]) for row in self.deliveries()]
+                if details and all(
+                    detail["status"] in ("succeeded", "failed", "paused") for detail in details
+                ):
+                    return details[0]
+            time_module.sleep(0.02)
+        raise AssertionError("delivery did not reach a terminal state")
+
     def disable_endpoint(self, endpoint_id=None):
         endpoint = self._endpoint(endpoint_id)
         response = self.client.post(f"/api/endpoints/{endpoint}/disable")
