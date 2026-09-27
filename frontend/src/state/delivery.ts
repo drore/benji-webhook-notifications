@@ -51,35 +51,120 @@ export function attemptSummary(outcome: string | null, httpStatus: number | null
   }
 }
 
-export function attemptExplanation(outcome: string | null, httpStatus: number | null): string {
+export interface AttemptExplanation {
+  title: string;
+  meaning: string;
+  consequence: string;
+}
+
+export function attemptExplanation(
+  outcome: string | null,
+  httpStatus: number | null,
+): AttemptExplanation {
   switch (outcome) {
     case "success":
-      return `The receiver accepted this attempt (HTTP ${httpStatus ?? "2xx"}).`;
+      return {
+        title: `HTTP ${httpStatus ?? "2xx"} — delivered`,
+        meaning: "The receiver accepted this attempt.",
+        consequence: "No further attempts; the branch is complete.",
+      };
     case "retryable_http":
       return httpStatus === 429
-        ? "The receiver rate-limited this attempt (HTTP 429). It is retried with exponential backoff."
-        : `The receiver returned a server-side error (HTTP ${httpStatus ?? "5xx"}). It is retried with exponential backoff.`;
+        ? {
+            title: "HTTP 429 — rate limited",
+            meaning: "The receiver asked the sender to slow down.",
+            consequence: "Retried with exponential backoff (2s, then 4s) within this cycle.",
+          }
+        : {
+            title: `HTTP ${httpStatus ?? "5xx"} — receiver error`,
+            meaning: "The receiver could not process the request.",
+            consequence: "Retried with exponential backoff (2s, then 4s) within this cycle.",
+          };
     case "http_error":
       if (httpStatus !== null && httpStatus >= 300 && httpStatus < 400) {
-        return `The receiver redirected (HTTP ${httpStatus}). Redirects are never followed, so this delivery fails without retrying.`;
+        return {
+          title: `HTTP ${httpStatus} — redirect`,
+          meaning: "The receiver redirected the request.",
+          consequence: "Redirects are never followed; this delivery fails without retrying.",
+        };
       }
       if (httpStatus === 401 || httpStatus === 403) {
-        return `The receiver rejected the request, likely a signature mismatch (HTTP ${httpStatus}). Client errors fail without retrying.`;
+        return {
+          title: `HTTP ${httpStatus} — rejected`,
+          meaning: "The receiver likely rejected the signature or credentials.",
+          consequence:
+            "Client errors fail without retrying — check the secret configured at the receiver.",
+        };
       }
       if (httpStatus === 404) {
-        return "The receiver path was not found (HTTP 404). Client errors fail without retrying.";
+        return {
+          title: "HTTP 404 — path not found",
+          meaning: "Nothing is listening at this URL path.",
+          consequence: "Client errors fail without retrying.",
+        };
       }
-      return `The receiver rejected the request (HTTP ${httpStatus ?? "4xx"}). Client errors fail without retrying.`;
+      return {
+        title: `HTTP ${httpStatus ?? "4xx"} — client error`,
+        meaning: "The receiver rejected the request.",
+        consequence: "Client errors fail without retrying.",
+      };
     case "timeout":
-      return "No response within the request timeout — the receiver may or may not have processed it (outcome unknown at receiver). It is retried.";
+      return {
+        title: "Timeout — outcome unknown at receiver",
+        meaning: "No response within the 2-second request timeout.",
+        consequence:
+          "The receiver may or may not have processed it; the attempt is retried and the receiver dedupes by delivery ID.",
+      };
     case "transport_error":
-      return "The connection failed before a response. It is retried with exponential backoff.";
+      return {
+        title: "Transport error — outcome unknown at receiver",
+        meaning: "The connection failed before a response arrived.",
+        consequence: "Retried with exponential backoff.",
+      };
     case "interrupted":
-      return "The sender restarted while this attempt was in flight; it counts against this cycle's attempt budget.";
+      return {
+        title: "Interrupted",
+        meaning: "The sender restarted while this attempt was in flight.",
+        consequence:
+          "Counts against this cycle's attempt budget; the delivery resumes if budget remains.",
+      };
     case "policy_error":
-      return "The destination URL failed the local destination policy at dispatch; nothing was sent.";
+      return {
+        title: "Destination policy rejected",
+        meaning: "The destination URL failed the local destination policy at dispatch.",
+        consequence: "Nothing was sent; this delivery fails.",
+      };
     default:
-      return "No outcome recorded for this attempt.";
+      return {
+        title: "No outcome recorded",
+        meaning: "This attempt has no stored result.",
+        consequence: "—",
+      };
+  }
+}
+
+export function attemptProgress(
+  status: DeliveryStatus,
+  attemptsCount: number,
+  dueAt: string | null,
+  now = Date.now(),
+): string {
+  switch (status) {
+    case "pending":
+      return "waiting for the first attempt";
+    case "in_progress":
+      return `attempt ${attemptsCount + 1} of 3 in flight`;
+    case "retrying": {
+      const seconds = dueAt ? Math.round((new Date(dueAt).getTime() - now) / 1000) : null;
+      const when = seconds === null ? "scheduled" : seconds <= 0 ? "due now" : `next attempt in ${seconds}s`;
+      return `attempt ${attemptsCount + 1} of 3 · ${when}`;
+    }
+    case "paused":
+      return `paused with ${attemptsCount} of 3 attempts used`;
+    case "succeeded":
+      return `delivered on attempt ${Math.max(attemptsCount, 1)}`;
+    case "failed":
+      return `failed after ${attemptsCount} of 3 attempts`;
   }
 }
 

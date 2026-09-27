@@ -128,6 +128,10 @@ test.describe("reviewer journey", () => {
     await selectLatestEvent(page, "reward_transaction_created");
     const branch = branchFor(page, name);
     await expect(branch).toContainText("Failed", { timeout: 20_000 });
+    await expect(branch.getByTestId("attempt-help")).toBeVisible();
+    await branch.getByTestId("attempt-help").hover();
+    await expect(branch.getByRole("tooltip")).toBeVisible();
+    await expect(branch.getByRole("tooltip")).toContainText("backoff");
     await branch.click();
     await expect(page.getByTestId("attempt-row")).toHaveCount(3);
     await expect(page.getByTestId("payload-json")).toContainText("m_fail");

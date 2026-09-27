@@ -23,6 +23,8 @@ def test_fail_once_then_success_appends_attempt(make_env):
     assert d["status"] == "succeeded" and [a["number"] for a in d["attempts"]] == [1, 2]
     assert d["attempts"][0]["http_status"] == 500 and d["attempts"][1]["http_status"] == 200
     assert env.receiver_requests()[-1]["delivery_id"] == d["id"]
+    summary = env.get_event(env.list_events()[0]["id"])["deliveries"][0]
+    assert summary["last_outcome"] == "success" and summary["last_http_status"] == 200
 
 
 def test_exhaustion_terminates_failed_after_three_attempts(make_env):
@@ -30,6 +32,8 @@ def test_exhaustion_terminates_failed_after_three_attempts(make_env):
     d = _setup_and_deliver(env)
     assert d["status"] == "failed" and [a["number"] for a in d["attempts"]] == [1, 2, 3]
     assert all(a["outcome"] == "retryable_http" for a in d["attempts"])
+    summary = env.get_event(env.list_events()[0]["id"])["deliveries"][0]
+    assert summary["last_outcome"] == "retryable_http" and summary["last_http_status"] == 500
 
 
 def test_terminal_3xx_is_not_followed_and_does_not_retry(make_env):

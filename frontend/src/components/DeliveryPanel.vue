@@ -3,6 +3,11 @@ import { computed, onMounted, onUnmounted, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
+import type { Attempt } from "../api/client";
+
+function explain(attempt: Attempt) {
+  return attemptExplanation(attempt.outcome, attempt.http_status);
+}
 
 const props = defineProps<{ api: DashboardApi; deliveryId: string | null }>();
 const { delivery, loading, error, replaying, replayError, load, replay } = createDeliveryState(
@@ -110,7 +115,9 @@ function outcomeTone(outcome: string | null): string {
                 ?
               </button>
               <span class="tip" role="tooltip">
-                {{ attemptExplanation(attempt.outcome, attempt.http_status) }}
+                <strong>{{ explain(attempt).title }}</strong>
+                <span>{{ explain(attempt).meaning }}</span>
+                <em>{{ explain(attempt).consequence }}</em>
               </span>
             </span>
             <span class="attempt-time">

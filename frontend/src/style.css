@@ -856,10 +856,59 @@ pre {
   font-size: 11.5px;
 }
 
+.flow-node-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--navy-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .vue-flow__controls {
   box-shadow: var(--shadow);
   border-radius: 9px;
   overflow: hidden;
+}
+
+.flow-node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.flow-node-progress {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.flow-node-name {
+  font-size: 13.5px;
+}
+
+.flow-endpoint-node .flow-node-outcome {
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.tip strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12.5px;
+}
+
+.tip span,
+.tip em {
+  display: block;
+}
+
+.tip em {
+  margin-top: 4px;
+  font-style: normal;
+  color: #c7d2ea;
 }
 
 /* Misc */
