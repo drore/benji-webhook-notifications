@@ -3,14 +3,17 @@ import { onMounted, ref } from "vue";
 
 import { ApiError, createDashboardApi } from "./api/client";
 import AppHeader from "./components/AppHeader.vue";
+import DeliveryPanel from "./components/DeliveryPanel.vue";
 import EndpointsPanel from "./components/EndpointsPanel.vue";
 import EventComposer from "./components/EventComposer.vue";
+import EventFlow from "./components/EventFlow.vue";
 import EventsList from "./components/EventsList.vue";
 
 const api = createDashboardApi();
 const status = ref("Checking API…");
 const reachable = ref(false);
 const selectedEventId = ref<string | null>(null);
+const selectedDeliveryId = ref<string | null>(null);
 
 onMounted(async () => {
   try {
@@ -37,10 +40,19 @@ onMounted(async () => {
         <EventsList
           :api="api"
           :selected-event-id="selectedEventId"
-          @select="selectedEventId = $event"
+          @select="
+            selectedEventId = $event;
+            selectedDeliveryId = null;
+          "
         />
       </div>
       <div class="column">
+        <EventFlow
+          :api="api"
+          :event-id="selectedEventId"
+          @select-delivery="selectedDeliveryId = $event"
+        />
+        <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
         <EndpointsPanel :api="api" />
       </div>
     </div>
