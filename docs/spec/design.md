@@ -11,7 +11,7 @@ tags: [design, webhook, dashboard, take-home, lean]
 
 ## 1. Purpose and scope
 
-A locally runnable, one-day implementation of the [Benji senior engineer take-home](https://even-foxglove-53c.notion.site/Sr-Software-Engineer-380b9f151bae81218487d84c42741d17): register endpoints with event-type subscriptions, publish events, deliver signed HTTP webhooks with bounded retries, replay failures, and observe delivery live in an operations dashboard. This is a fresh independent rethink: a minimal endpoint model (no workflow, version, cutover, or archive layer), a single FastAPI process with an in-process worker, and SQLite as the durable queue.
+A locally runnable, one-day implementation of the [Benji senior engineer take-home](https://even-foxglove-53c.notion.site/Sr-Software-Engineer-380b9f151bae81218487d84c42741d17): register endpoints with event-type subscriptions, publish events, deliver signed HTTP webhooks with bounded retries, replay failures, and observe delivery live in an operations dashboard. This lean design builds on the earlier Benji specification and its agreed contracts — endpoint-owned subscriptions, HMAC-signed delivery, exponential retry with replay, and server-generated event IDs with a separate submission key — while re-deriving the product shape with a minimal endpoint model (no workflow, version, cutover, or archive layer), a single FastAPI process with an in-process worker, and SQLite as the durable queue.
 
 Fixed constraints: one fixed local customer, loopback-only networking, no external infrastructure, Python backend, Vue 3 + TypeScript dashboard.
 
@@ -162,7 +162,6 @@ Simple event-centered fan-out view in plain CSS with a Benji-inspired palette (n
 - `AGENTS.md` — engineering instructions carried over from the previous project (contract-first, SSOT, small complete slices, TDD with observed reds, security and remote effects first-class, AI as checked collaborator, honest evidence, no unapproved remote actions) specialized for this repo.
 - `docs/spec/design.md` — this document; frozen on approval, changes only with Dror's explicit consent.
 - `docs/plan/implementation-plan.md` — assignment plan: approach, tradeoffs, cuts, more-time design, SDD-TDD slice sequence with executable definitions of done.
-- `docs/process/developer-journal.md` — decision log plus conversation record (Dror's messages verbatim, each assistant turn in one short paragraph), mirrored to the Obsidian vault.
 - `docs/process/ai-usage.md` — short AI-usage note and prompt trail.
 - `docs/process/worklog.md` — focused-time record for CON-01 and the final security review notes.
 - `README.md` — setup, three run commands, test commands, and the reviewer walkthrough.

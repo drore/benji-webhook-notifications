@@ -61,7 +61,7 @@ HTTP client (`frontend/src/api/client.ts`): `createDashboardApi(base = "/api")` 
 ### Task 1: Backend skeleton, config, schema, health, and project records
 
 **Files:**
-- Create: `pyproject.toml`, `.gitignore`, `AGENTS.md`, `backend/app/__init__.py`, `backend/app/config.py`, `backend/app/db.py`, `backend/app/api.py`, `tests/__init__.py`, `tests/conftest.py`, `tests/test_skeleton.py`, `docs/process/developer-journal.md`, `docs/process/ai-usage.md`, `docs/process/worklog.md`
+- Create: `pyproject.toml`, `.gitignore`, `AGENTS.md`, `backend/app/__init__.py`, `backend/app/config.py`, `backend/app/db.py`, `backend/app/api.py`, `tests/__init__.py`, `tests/conftest.py`, `tests/test_skeleton.py`, `docs/process/ai-usage.md`, `docs/process/worklog.md`
 
 **Interfaces:**
 - Produces: `app.config.Settings` + `get_settings() -> Settings`; `app.db.connect(path: str | Path) -> sqlite3.Connection`, `app.db.init_schema(conn) -> None`; `app.api.create_app(settings: Settings | None = None) -> FastAPI`, module-level `app`.
@@ -81,7 +81,7 @@ dev = ["pytest>=8.2", "anyio>=4.4"]
 
 - [ ] **Step 2: Create `.gitignore`** with `.venv/`, `__pycache__/`, `*.pyc`, `data/`, `node_modules/`, `frontend/dist/`, `frontend/test-results/`, `.DS_Store`.
 
-- [ ] **Step 3: Adapt `AGENTS.md`** from `/Users/drore/.codex/worktrees/benji-first-rope/benji-task/AGENTS.md`: keep its six principle sections (start with the contract; small complete slices; design for a human maintainer with SSOT; security and remote effects first-class; AI as checked collaborator; verify and hand off honestly), rewrite repo-specific specifics to: spec at `docs/spec/design.md` (frozen without Dror's approval), plan at `docs/plan/implementation-plan.md`, run/test commands from the README, no push without approval, loopback-only security boundaries, journal mirrored to Obsidian.
+- [ ] **Step 3: Adapt `AGENTS.md`** from `/Users/drore/.codex/worktrees/benji-first-rope/benji-task/AGENTS.md`: keep its six principle sections (start with the contract; small complete slices; design for a human maintainer with SSOT; security and remote effects first-class; AI as checked collaborator; verify and hand off honestly), rewrite repo-specific specifics to: spec at `docs/spec/design.md` (frozen without Dror's approval), plan at `docs/plan/implementation-plan.md`, run/test commands from the README, no push without approval, loopback-only security boundaries.
 
 - [ ] **Step 4: Write the failing test `tests/test_skeleton.py`**
 
@@ -151,7 +151,7 @@ CREATE INDEX IF NOT EXISTS idx_deliveries_due ON deliveries(status, due_at);
 
 - [ ] **Step 7: Implement `create_app`** with lifespan calling `connect` + `init_schema` (worker start comes in Task 7 behind `settings.worker_enabled`), `GET /api/health` → `{"status": "ok"}`, and exception handlers for `ApiError` (defined here: `app.models.ApiError(code, message, status_code)`) plus `RequestValidationError` → 400 `validation_error` and `Exception` → 500 `internal_error`, all returning `{code, message}`. Also write `tests/conftest.py` with fixtures used from here on: `settings(tmp_path)` (temp DB, `worker_enabled=False`), `db_conn` (connected + schema-initialized, closed on teardown), and `client` (`TestClient` over `create_app(settings)` entered as a context manager so lifespan runs).
 
-- [ ] **Step 8: Create process records.** `docs/process/developer-journal.md` with a maintenance rule and entries for this session: record Dror's messages verbatim — "learn this project"; "fresh attempt"; "Yes, and be sure to cover all other requirements of the assignment such as developer journal and maybe AI note etc etc"; "Sure, just continue"; "As long as it covers the requirements of the assignments and helps me to shine with this task I'm good with it!" — each followed by one short paragraph summarizing the assistant turn (learning, independent-rethink decision, design approval, spec commit `cc95b44`, plan). `ai-usage.md`: short note that the work is AI-assisted, models/tools used, and where evidence lives. `worklog.md`: focused-session timing table (CON-01) starting now.
+- [ ] **Step 8: Create process records.** `ai-usage.md`: short note that the work is AI-assisted, which tools were used, and where evidence lives. `worklog.md`: focused-session timing table (CON-01) starting now.
 
 - [ ] **Step 9: Run `uv run pytest -q`** — expected PASS (4 tests).
 
@@ -1012,7 +1012,7 @@ git commit -m "Add event fan-out, delivery detail, and replay UI"
 
 **Files:**
 - Create: `tests/test_golden_path.py`, `scripts/seed_demo.py`, `README.md`
-- Modify: `docs/process/developer-journal.md`, `docs/process/ai-usage.md`, `docs/process/worklog.md`, `docs/plan/implementation-plan.md` (append execution evidence section)
+- Modify: `docs/process/ai-usage.md`, `docs/process/worklog.md`, `docs/plan/implementation-plan.md` (append execution evidence section)
 
 **Interfaces:**
 - Consumes: everything.
@@ -1043,7 +1043,7 @@ def test_full_reviewer_journey(make_env):
 
 - [ ] **Step 5: Write `scripts/seed_demo.py`:** idempotent demo seeding against a running API — creates CRM (two types) and ledger (one type) endpoints, prints the one-time secrets and receiver setup instructions, submits one shared event; document in README.
 
-- [ ] **Step 6: Update process records:** journal entries for every task commit (one line each with commit hash and check results); `worklog.md` final focused-time total; `ai-usage.md` final prompts/tools summary; append to this plan an "Execution evidence" section: exact commands, results, candidate commit, and remaining cuts. Re-run the full backend and frontend suites once more on the final revision and record outputs.
+- [ ] **Step 6: Update process records:** `worklog.md` final focused-time total; `ai-usage.md` final tools summary and results; append to this plan an "Execution evidence" section: exact commands, results, candidate commit, and remaining cuts. Re-run the full backend and frontend suites once more on the final revision and record outputs.
 
 - [ ] **Step 7: Commit**
 

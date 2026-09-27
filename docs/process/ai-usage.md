@@ -7,11 +7,10 @@ tags: [benji, take-home, ai-usage]
 
 # AI usage note
 
-This project is AI-assisted. The human (Dror, engineering manager) set the goal, approved the design and plan, and owns all decisions; the agent produced the analysis, specification, plan, implementation, and tests under review gates.
+This project is AI-assisted. Dror (engineering manager) owns the product direction, made every specification decision, and approved the design and plan; the agent produced analysis, code, and tests under his review.
 
-- **Environment:** opencode CLI running the `deepseek-flash` model, with a session-helper toolchain (memory, session log) and repository-local process records.
-- **Workflow:** brainstorming → written spec (`docs/spec/design.md`) → implementation plan (`docs/plan/implementation-plan.md`) → small TDD slices with observed reds → per-task commits → final whole-branch review.
-- **Evidence:** the developer journal (`docs/process/developer-journal.md`) records Dror's messages verbatim and one summary paragraph per assistant turn; the worklog (`docs/process/worklog.md`) records focused time; test commands and results live in the plan's execution evidence and the ledger at `.superpowers/sdd/implementation-plan/progress.md` (scratch, git-ignored).
-- **Limits:** the initial build ran without an independent human reviewer; a fresh-context review of the whole branch follows the last task. The previous project (`benji-task`) was consulted as reference only; no code or tests were copied from it.
+The lean design implemented here builds directly on the specification Dror developed and reviewed in the earlier Benji attempt (`benji-task`). The shared, already-settled contracts are: endpoint-owned event-type subscriptions with fan-out across eligible endpoints, HMAC-SHA256 delivery signing with a one-time secret, ±300s timestamp window, and delivery-id deduplication; exponential backoff of 2s then 4s across three attempts with replay; server-generated event IDs with a separate sender idempotency key; the loopback-only destination policy; and the safe `{code, message}` error envelope. This attempt re-derives the product shape with a minimal endpoint model (no workflow/version layer) and a simpler single-process architecture.
 
-Detailed prompt trail: the developer journal's conversation record plus the commit history are the authoritative trail. This note will be updated with the final candidate revision and check results.
+- **Environment:** opencode CLI with the `deepseek-flash` model. The work was executed as specification-driven, test-driven slices with a commit per slice.
+- **Trail:** the specification (`docs/spec/design.md`), the implementation plan (`docs/plan/implementation-plan.md`), the worklog (`docs/process/worklog.md`), and the git history. The execution ledger is scratch and git-ignored.
+- **Limits:** no independent human review during the build; a fresh-context review of the whole branch follows the final task. Local checks do not establish production readiness.
