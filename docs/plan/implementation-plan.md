@@ -1066,9 +1066,10 @@ After Task 15: report the candidate revision, evidence, and limits to Dror; do n
 
 ## Execution Evidence (2026-09-27, branch `lean-webhook-build`)
 
-- **Candidate:** the Task 15 commit on `lean-webhook-build` (`git log -1`); all 15 tasks completed with per-task commits and ledger entries.
-- **Backend:** `uv run pytest -q` → **50 passed** on the final revision.
-- **Frontend:** `cd frontend && npm test` → **15 passed** across 5 files; `npm run build` (vue-tsc + vite) → success.
+- **Candidate:** the post-review fix commit on `lean-webhook-build` (`git log -1`); all 15 tasks completed with per-task commits and ledger entries.
+- **Independent review:** fresh-context review of `07719b0..bc44b1a` found 2 Critical, 4 Important, 9 Minor findings; all Critical/Important were fixed in one TDD pass (replay cycle budget, malformed-port 500s, NaN/deep-nesting acceptance, 400 error codes, disable/resume TOCTOU, missing fan-out polling). Minors were deferred and recorded in the ledger. No re-review was dispatched; each fix has a test that failed first.
+- **Backend:** `uv run pytest -q` → **57 passed** on the final revision.
+- **Frontend:** `cd frontend && npm test` → **16 passed** across 5 files; `npm run build` (vue-tsc + vite) → success.
 - **Boot smoke test:** the README's exact uvicorn commands run on spare ports; `GET /api/health` → `{"status":"ok"}` and the receiver page returns 200. The receiver command needs `PYTHONPATH=backend` so it verifies signatures with the sender's single signing implementation.
 - **Ledger:** `.superpowers/sdd/implementation-plan/progress.md` (scratch, git-ignored) records per-task run commands, results, and rulings.
-- **Remaining limits:** manual browser walkthrough not yet run end-to-end by a human; receiver state is in-memory; no independent review yet (whole-branch review follows); no push or submission.
+- **Remaining limits:** manual browser walkthrough not yet run end-to-end by a human; receiver state is in-memory; deferred minors stand; no push or submission.
