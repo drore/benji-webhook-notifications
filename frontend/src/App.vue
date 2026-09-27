@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+
 import { ApiError, createDashboardApi } from "./api/client";
+import EndpointsPanel from "./components/EndpointsPanel.vue";
 
 const api = createDashboardApi();
 const status = ref("Checking API…");
@@ -23,4 +25,7 @@ onMounted(async () => {
     <h1>Benji webhook operations</h1>
     <p data-testid="api-status" :hidden="reachable">{{ status }}</p>
   </header>
+  <main>
+    <EndpointsPanel :api="api" />
+  </main>
 </template>
