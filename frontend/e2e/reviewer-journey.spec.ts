@@ -291,5 +291,10 @@ test.describe("reviewer journey", () => {
     await page.getByRole("button", { name: "Find" }).click();
     await expect(page.getByTestId("event-node")).toContainText(firstEvent);
     await expect(page.getByTestId("delivery-id")).toContainText(deliveryId);
+
+    // Browser back returns to the previous view instead of leaving the app.
+    await page.goBack();
+    await expect(page.getByTestId("event-node")).toContainText(secondEvent);
+    await expect(page.getByTestId("delivery-id")).toHaveCount(0);
   });
 });
