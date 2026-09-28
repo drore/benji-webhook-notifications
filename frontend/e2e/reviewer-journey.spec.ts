@@ -455,14 +455,18 @@ test.describe("reviewer journey", () => {
     await configureReceiver(request, secret, "success");
     await enableEndpoint(page, name);
 
-    // The live indicator is a pulsing dot until the dashboard is paused.
-    await expect(page.getByTestId("live-state").locator(".live-dot")).toHaveCSS(
+    // The status area shows one live indicator: a pulsing dot until it is paused.
+    await expect(page.getByTestId("overview-freshness").locator(".live-dot")).toHaveCSS(
       "animation-name",
       "live-pulse",
     );
+    await expect(page.getByTestId("freeze-toggle")).toHaveText("Pause live updates");
     await page.getByTestId("freeze-toggle").click();
-    await expect(page.getByTestId("live-state")).toHaveText("paused");
-    await expect(page.getByTestId("live-state").locator(".live-dot")).toHaveClass(/is-paused/);
+    await expect(page.getByTestId("freeze-toggle")).toHaveText("Resume live updates");
+    await expect(page.getByTestId("overview-freshness")).toContainText("paused");
+    await expect(page.getByTestId("overview-freshness").locator(".live-dot")).toHaveClass(
+      /is-paused/,
+    );
     await expect(page.getByTestId("events-freshness")).toContainText("paused");
 
     // Publish behind the dashboard's back so only a refresh can reveal it.
@@ -480,7 +484,8 @@ test.describe("reviewer journey", () => {
     await expect(page.getByTestId("event-row").filter({ hasText: eventType })).toBeVisible();
 
     await page.getByTestId("freeze-toggle").click();
-    await expect(page.getByTestId("live-state")).toHaveText("live");
+    await expect(page.getByTestId("freeze-toggle")).toHaveText("Pause live updates");
+    await expect(page.getByTestId("overview-freshness")).toHaveText("live");
   });
 
   test("REQ-007 simulated traffic pushes events on an interval", async ({ page, request }) => {

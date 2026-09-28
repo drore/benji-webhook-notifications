@@ -10,7 +10,6 @@ import EventComposer from "./components/EventComposer.vue";
 import EventFlow from "./components/EventFlow.vue";
 import EventsList from "./components/EventsList.vue";
 import IdLookup from "./components/IdLookup.vue";
-import LiveDot from "./components/LiveDot.vue";
 import PanelSlot from "./components/PanelSlot.vue";
 import { frozen, requestRefresh, startClock, stopClock, toggleFrozen } from "./state/live";
 import {
@@ -137,10 +136,6 @@ onMounted(async () => {
           >
             Reset layout
           </button>
-          <span class="freshness" data-testid="live-state">
-            <LiveDot :paused="frozen" />
-            {{ frozen ? "paused" : "live" }}
-          </span>
         </div>
       </div>
     </header>
