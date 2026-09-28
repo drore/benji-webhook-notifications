@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi, EventDetail } from "../api/client";
 import { STATUS_COLORS } from "../state/delivery";
+import { frozen, now, refreshToken, shouldPoll, updatedLabel } from "../state/live";
 import EndpointNode from "./flow/EndpointNode.vue";
 import EventNode from "./flow/EventNode.vue";
 
@@ -22,6 +23,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const replayingAll = ref(false);
 const replaySummary = ref<string | null>(null);
+const lastUpdatedAt = ref<Date | null>(null);
 let timer: number | null = null;
 
 const failedDeliveries = computed(() =>
@@ -62,6 +64,7 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     event.value = await props.api.getEvent(props.eventId);
+    lastUpdatedAt.value = new Date();
     error.value = null;
   } catch {
     error.value = "Could not load the selected event.";
@@ -73,7 +76,7 @@ async function load(): Promise<void> {
 function startPolling(): void {
   stopPolling();
   timer = window.setInterval(() => {
-    if (!document.hidden) void load();
+    if (shouldPoll()) void load();
   }, 2000);
 }
 
@@ -90,6 +93,7 @@ onMounted(async () => {
 });
 onUnmounted(stopPolling);
 watch(() => props.eventId, load);
+watch(refreshToken, () => void load());
 
 const nodes = computed<Node[]>(() => {
   if (!event.value) return [];
@@ -152,7 +156,9 @@ function onNodeClick(payload: { node: Node }): void {
   <section class="card">
     <div class="card-header">
       <h2>Event journey</h2>
-      <span v-if="event" class="muted" style="font-size: 12px">live · updates every 2s</span>
+      <span v-if="event" class="freshness" data-testid="journey-freshness">
+        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+      </span>
     </div>
     <p class="card-hint">
       One branch per matching endpoint. Click an endpoint node to inspect its attempts and

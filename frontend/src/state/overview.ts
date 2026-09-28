@@ -1,7 +1,8 @@
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, Overview } from "../api/client";
+import { refreshToken, shouldPoll } from "./live";
 
 const DEFAULT_POLL_MS = 2000;
 
@@ -32,9 +33,11 @@ export function createOverviewState(api: DashboardApi) {
     stopPolling();
     void load();
     timer = window.setInterval(() => {
-      if (!document.hidden) void load();
+      if (shouldPoll()) void load();
     }, intervalMs);
   }
+
+  watch(refreshToken, () => void load());
 
   function stopPolling(): void {
     if (timer !== null) {

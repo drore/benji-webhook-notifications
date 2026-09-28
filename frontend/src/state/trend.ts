@@ -2,6 +2,7 @@ import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, EventTypeInfo, EventTypeStats } from "../api/client";
+import { refreshToken, shouldPoll } from "./live";
 
 const DEFAULT_POLL_MS = 10000;
 
@@ -22,6 +23,7 @@ export function createTrendState(api: DashboardApi) {
   const stats = ref<EventTypeStats | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
+  const lastUpdatedAt = ref<Date | null>(null);
   let timer: number | null = null;
 
   async function load(): Promise<void> {
@@ -31,6 +33,7 @@ export function createTrendState(api: DashboardApi) {
         hours: hours.value,
         buckets: bucketsForWindow(hours.value),
       });
+      lastUpdatedAt.value = new Date();
       error.value = null;
     } catch (cause) {
       error.value = cause instanceof ApiError ? cause.message : "Could not load the trend.";
@@ -66,11 +69,12 @@ export function createTrendState(api: DashboardApi) {
   }
 
   watch([eventType, hours], () => void load());
+  watch(refreshToken, () => void load());
 
   function startPolling(intervalMs = DEFAULT_POLL_MS): void {
     stopPolling();
     timer = window.setInterval(() => {
-      if (!document.hidden) void load();
+      if (shouldPoll()) void load();
     }, intervalMs);
   }
 
@@ -88,6 +92,7 @@ export function createTrendState(api: DashboardApi) {
     stats,
     loading,
     error,
+    lastUpdatedAt,
     load,
     loadTypes,
     startPolling,

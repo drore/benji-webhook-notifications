@@ -1,7 +1,8 @@
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, Endpoint, EndpointCreate } from "../api/client";
+import { refreshToken, shouldPoll } from "./live";
 
 const DEFAULT_POLL_MS = 2000;
 
@@ -87,9 +88,11 @@ export function createEndpointsState(api: DashboardApi) {
   function startPolling(intervalMs = DEFAULT_POLL_MS): void {
     stopPolling();
     timer = window.setInterval(() => {
-      if (!document.hidden) void load();
+      if (shouldPoll()) void load();
     }, intervalMs);
   }
+
+  watch(refreshToken, () => void load());
 
   function stopPolling(): void {
     if (timer !== null) {

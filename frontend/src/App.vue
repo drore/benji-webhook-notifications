@@ -10,6 +10,7 @@ import EventComposer from "./components/EventComposer.vue";
 import EventFlow from "./components/EventFlow.vue";
 import EventsList from "./components/EventsList.vue";
 import IdLookup from "./components/IdLookup.vue";
+import { frozen, requestRefresh, startClock, stopClock, toggleFrozen } from "./state/live";
 import { readSelection, selectionSearch } from "./state/location";
 import type { Selection } from "./state/location";
 
@@ -41,6 +42,9 @@ function onPopState(): void {
 onMounted(() => window.addEventListener("popstate", onPopState));
 onUnmounted(() => window.removeEventListener("popstate", onPopState));
 
+onMounted(startClock);
+onUnmounted(stopClock);
+
 onMounted(async () => {
   try {
     const health = await api.getHealth();
@@ -66,6 +70,25 @@ onMounted(async () => {
       <div class="topbar-tools">
         <AppHeader :api="api" />
         <IdLookup :api="api" @select="applySelection" />
+        <div class="live-controls">
+          <button
+            type="button"
+            class="btn btn-small"
+            data-testid="freeze-toggle"
+            @click="toggleFrozen"
+          >
+            {{ frozen ? "Resume live updates" : "Pause live updates" }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-small"
+            data-testid="refresh-now"
+            @click="requestRefresh"
+          >
+            Refresh now
+          </button>
+          <span class="freshness" data-testid="live-state">{{ frozen ? "paused" : "live" }}</span>
+        </div>
       </div>
     </header>
     <p v-if="!reachable" data-testid="api-status" class="banner banner-error">

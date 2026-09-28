@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { setStatusFilter } from "../state/filters";
+import { now, updatedLabel } from "../state/live";
 import { createOverviewState } from "../state/overview";
 
 const props = defineProps<{ api: DashboardApi }>();
@@ -49,6 +50,9 @@ function formatDue(value: string | null | undefined): string {
     </button>
     <span v-if="overview?.latest_event" class="signal-pill signal-neutral">
       Latest <code>{{ overview.latest_event.type }}</code>
+    </span>
+    <span class="freshness" data-testid="overview-freshness">
+      {{ updatedLabel(lastUpdatedAt, now) }}
     </span>
     <span v-if="stale" data-testid="stale-banner" class="signal-pill signal-danger">
       <span class="signal-dot" aria-hidden="true"></span>

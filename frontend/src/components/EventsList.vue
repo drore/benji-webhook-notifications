@@ -12,11 +12,23 @@ import {
   setTypeFilter,
 } from "../state/filters";
 import { createEventsState } from "../state/events";
+import { frozen, now, updatedLabel } from "../state/live";
 
 const props = defineProps<{ api: DashboardApi; selectedEventId: string | null }>();
 const emit = defineEmits<{ select: [eventId: string] }>();
-const { events, total, loading, loadingMore, stale, error, load, loadMore, startPolling, stopPolling } =
-  createEventsState(props.api);
+const {
+  events,
+  total,
+  loading,
+  loadingMore,
+  stale,
+  lastUpdatedAt,
+  error,
+  load,
+  loadMore,
+  startPolling,
+  stopPolling,
+} = createEventsState(props.api);
 
 const endpoints = ref<Endpoint[]>([]);
 
@@ -57,7 +69,9 @@ function age(createdAt: string): string {
   <section class="card">
     <div class="card-header">
       <h2>Recent events</h2>
-      <span class="muted" style="font-size: 12px">updates live every 2s</span>
+      <span class="freshness" data-testid="events-freshness">
+        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+      </span>
     </div>
     <p class="card-hint">Select an event to follow its journey above.</p>
     <div class="filter-bar">

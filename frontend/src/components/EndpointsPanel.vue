@@ -3,11 +3,13 @@ import { onMounted, onUnmounted, ref } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { createEndpointsState } from "../state/endpoints";
+import { frozen, now, updatedLabel } from "../state/live";
 
 const props = defineProps<{ api: DashboardApi }>();
 const {
   endpoints,
   loading,
+  lastUpdatedAt,
   error,
   creating,
   togglingId,
@@ -56,7 +58,9 @@ async function copySecret(endpointId: string, secret: string): Promise<void> {
   <section class="card">
     <div class="card-header">
       <h2>Endpoints</h2>
-      <span class="muted" style="font-size: 12px">subscriptions · signing secrets</span>
+      <span class="freshness" data-testid="endpoints-freshness">
+        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+      </span>
     </div>
     <p class="card-hint">
       Name the destination and pick the event types it cares about. Its receiver URL is generated

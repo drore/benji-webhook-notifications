@@ -445,4 +445,35 @@ test.describe("reviewer journey", () => {
     // The current bucket holds the traffic, so its bar has a visible height.
     await expect(page.locator('[data-testid="trend-bar"]').last()).toBeVisible();
   });
+
+  test("REQ-009 pausing freezes the dashboard and refresh catches up", async ({ page, request }) => {
+    const suffix = uniqueSuffix();
+    const eventType = `e2e_pause_${suffix}`;
+    const name = `E2E Pause ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: [eventType] });
+    await configureReceiver(request, secret, "success");
+    await enableEndpoint(page, name);
+
+    await page.getByTestId("freeze-toggle").click();
+    await expect(page.getByTestId("live-state")).toHaveText("paused");
+    await expect(page.getByTestId("events-freshness")).toContainText("paused");
+
+    // Publish behind the dashboard's back so only a refresh can reveal it.
+    const apiUrl = process.env.PW_API_URL ?? "http://127.0.0.1:8000";
+    const published = await request.post(`${apiUrl}/api/events`, {
+      data: { idempotency_key: `pause-${suffix}`, type: eventType, payload: {} },
+    });
+    expect(published.status()).toBe(201);
+
+    // Well past the two-second poll interval the list is still untouched.
+    await page.waitForTimeout(3000);
+    await expect(page.getByTestId("event-row").filter({ hasText: eventType })).toHaveCount(0);
+
+    await page.getByTestId("refresh-now").click();
+    await expect(page.getByTestId("event-row").filter({ hasText: eventType })).toBeVisible();
+
+    await page.getByTestId("freeze-toggle").click();
+    await expect(page.getByTestId("live-state")).toHaveText("live");
+  });
 });

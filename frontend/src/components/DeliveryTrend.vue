@@ -2,11 +2,23 @@
 import { computed, onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
+import { frozen, now, updatedLabel } from "../state/live";
 import { TREND_WINDOWS, createTrendState } from "../state/trend";
 
 const props = defineProps<{ api: DashboardApi }>();
-const { types, eventType, hours, stats, loading, error, load, loadTypes, startPolling, stopPolling } =
-  createTrendState(props.api);
+const {
+  types,
+  eventType,
+  hours,
+  stats,
+  loading,
+  error,
+  lastUpdatedAt,
+  load,
+  loadTypes,
+  startPolling,
+  stopPolling,
+} = createTrendState(props.api);
 
 onMounted(async () => {
   await Promise.all([loadTypes(), load()]);
@@ -100,6 +112,9 @@ const durationLabel = computed(() => {
         </button>
       </div>
     </div>
+    <p class="freshness" data-testid="trend-freshness">
+      {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+    </p>
     <p class="card-hint">
       Deliveries of one event type over time, bucketed by the selected window. A delivery counts
       under its current status, so a recent bucket can still change.

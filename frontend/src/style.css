@@ -267,6 +267,19 @@ button.signal-pill:hover {
   text-anchor: middle;
 }
 
+.freshness {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.live-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .switch.is-disabled {
   cursor: not-allowed;
   color: var(--muted);

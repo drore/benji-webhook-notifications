@@ -5,6 +5,7 @@ import type { DashboardApi } from "../api/client";
 import { ApiError } from "../api/client";
 import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
 import { buildDeliveryReport, deliveryHeadline } from "../state/report";
+import { frozen, now, refreshToken, shouldPoll, updatedLabel } from "../state/live";
 import type { Attempt } from "../api/client";
 
 function explain(attempt: Attempt) {
@@ -12,7 +13,7 @@ function explain(attempt: Attempt) {
 }
 
 const props = defineProps<{ api: DashboardApi; deliveryId: string | null }>();
-const { delivery, loading, error, replaying, replayError, load, replay, reset } =
+const { delivery, loading, error, replaying, replayError, lastUpdatedAt, load, replay, reset } =
   createDeliveryState(props.api);
 
 let timer: number | null = null;
@@ -20,7 +21,7 @@ let timer: number | null = null;
 function startPolling(): void {
   stopPolling();
   timer = window.setInterval(() => {
-    if (!document.hidden && props.deliveryId) void load(props.deliveryId);
+    if (shouldPoll() && props.deliveryId) void load(props.deliveryId);
   }, 2000);
 }
 
@@ -41,6 +42,10 @@ watch(
   },
   { immediate: true },
 );
+
+watch(refreshToken, () => {
+  if (props.deliveryId) void load(props.deliveryId);
+});
 
 onMounted(startPolling);
 onUnmounted(stopPolling);
@@ -177,6 +182,9 @@ function durationLabel(attempt: Attempt): string {
         </button>
         <span v-if="delivery" class="status-pill" :data-status="delivery.status">
           {{ STATUS_LABELS[delivery.status] }}
+        </span>
+        <span class="freshness" data-testid="delivery-freshness">
+          {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
         </span>
       </div>
     </div>
