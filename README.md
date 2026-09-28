@@ -60,6 +60,8 @@ Open the dashboard at http://127.0.0.1:5173/, the receiver at http://127.0.0.1:9
 4. **Watch delivery.** Nodes update without manual refresh. Click an endpoint node to inspect the endpoint URL, state, due time, payload, and the attempt timeline with bounded response excerpts. The receiver page shows each verified request; a `fail_once` path fails attempt 1 and succeeds on the retry (2s later with defaults).
 
    The selected event and delivery stay in the URL (`?event=evt_…&delivery=dlv_…`), so a view survives a reload and can be shared, and the **Find by ID** box in the header jumps straight to any `evt_…` or `dlv_…` id you paste from a log.
+
+   **Pause live updates** in the header freezes every panel for careful reading, and **Refresh now** fetches everything once; each card header shows whether it is live and how old its data is.
 5. **Deduplicate and conflict.** The submission key rotates automatically after each accepted event. To demonstrate deduplication, paste the previous key back into **Submission key** and publish the same payload — the dashboard reports `Already accepted` with the original event ID and creates no new delivery. Change the payload while keeping that key and publish to see the `409` conflict notice.
 6. **Replay.** Set a path to `always_fail`, publish, and wait for the three-attempt cycle to end in `Failed`. Open the branch and click **Replay** — attempts append to the same delivery and the receiver sees the same delivery ID.
 7. **Disable/resume.** Disable an endpoint: new events stop routing to it and its queued deliveries pause. Resume restores them. A disabled endpoint blocks replay until resumed.

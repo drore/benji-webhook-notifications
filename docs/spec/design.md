@@ -2,7 +2,7 @@
 title: Lean webhook notification system and operations dashboard
 version: 0.1
 date_created: 2026-09-27
-last_updated: 2026-09-27
+last_updated: 2026-09-28
 owner: Dror Elovits
 tags: [design, webhook, dashboard, take-home, lean]
 ---
@@ -59,7 +59,7 @@ Single fixed customer is implicit; no customer table and no browser-supplied cus
 
 ## 4. Behavior contracts
 
-**FR-01 Intake and identity — Chosen.** `POST /api/events` validates key/type/payload, then in one transaction creates the event plus one delivery per enabled matching endpoint. The server returns `201` with the generated event id and `deduplicated=false`. A repeat with the same idempotency key and canonical-equal type/payload returns `200` with the original event id and `deduplicated=true`, creating nothing. Same key with changed type or payload returns `409 idempotency_conflict` without modifying the original. A different key with identical content creates a new event. No matching endpoint still persists the event with zero deliveries.
+**FR-01 Intake and identity — Chosen.** `POST /api/events` validates key/type/payload, then in one transaction creates the event plus one delivery per enabled matching endpoint. The server returns `201` with the generated event id and `deduplicated=false`. A repeat with the same idempotency key and canonical-equal type/payload returns `200` with the original event id and `deduplicated=true`, creating nothing. Same key with changed type or payload returns `409 idempotency_conflict` without modifying the original. A different key with identical content creates a new event. No matching endpoint still persists the event with zero deliveries. When a submission requests schema enforcement, the payload is validated against the registered schema for the event type before anything is persisted; a violation returns `400 validation_error` with field paths only, creates no event, and does not consume the idempotency key. Event types without a registered schema keep the structural checks. *(Amended 2026-09-28 with Dror's approval.)*
 
 **FR-02 Routing and fan-out — Chosen.** Each endpoint owns its subscriptions. Acceptance matches the event type against every enabled endpoint's `event_types`, across all endpoints. Each match persists exactly one delivery. Disabled endpoints are excluded. Persist before any outbound HTTP.
 
@@ -75,7 +75,7 @@ Single fixed customer is implicit; no customer table and no browser-supplied cus
 
 **FR-08 Destination policy — Chosen.** Endpoint URLs are validated at creation and revalidated at dispatch against the configured receiver origin (default `http://127.0.0.1:9000`): scheme `http`, exact configured host and port, path `/webhooks/{segment}` with one URL-safe segment `[A-Za-z0-9._-]{1,64}`, no credentials, query, or fragment. The sender generates the URL as `{receiver_origin}/webhooks/{endpoint_id}` when the client omits one; an explicitly provided URL is validated the same way. Receiver administration routes are excluded. Redirects are never followed. Rejection is a validation error at creation and a terminal dispatch-policy failure at delivery time.
 
-**FR-09 Limits and errors — Chosen.** The idempotency key is 1–128 and the event type is 1–64 case-sensitive ASCII letters, digits, `_`, `-`, or `.`; payload is any JSON object or array up to 32 KiB canonical UTF-8. API errors share `{code, message}` with codes `validation_error` (400), `idempotency_conflict` and `replay_unavailable` (409), `not_found` (404), `internal_error` (500). Errors never include secrets, payloads, or internal traces. Rate limiting is cut (section 12).
+**FR-09 Limits and errors — Chosen.** The idempotency key is 1–128 and the event type is 1–64 case-sensitive ASCII letters, digits, `_`, `-`, or `.`; payload is any JSON object or array up to 32 KiB canonical UTF-8, optionally validated against the event type's registered schema when enforcement is requested. API errors share `{code, message}` with codes `validation_error` (400, including payload-schema violations), `idempotency_conflict` and `replay_unavailable` (409), `not_found` (404), `internal_error` (500). Errors never include secrets, payloads, or internal traces. Rate limiting is cut (section 12). *(Clause amended 2026-09-28 with Dror's approval.)*
 
 **FR-10 Live observability — Chosen.** The dashboard polls the API every 2 seconds while the tab is visible. State is authoritative on the server; the client never invents delivery outcomes. After a polling failure the client retains the last known state, shows a stale banner with the last successful update time, and resumes automatically.
 
