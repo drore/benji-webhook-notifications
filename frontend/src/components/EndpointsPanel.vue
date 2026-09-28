@@ -3,7 +3,8 @@ import { onMounted, onUnmounted, ref } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { createEndpointsState } from "../state/endpoints";
-import { frozen, now, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 
 const props = defineProps<{ api: DashboardApi }>();
 const {
@@ -59,7 +60,8 @@ async function copySecret(endpointId: string, secret: string): Promise<void> {
     <div class="card-header">
       <h2>Endpoints</h2>
       <span class="freshness" data-testid="endpoints-freshness">
-        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+        <LiveDot :paused="frozen" />
+        {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
       </span>
     </div>
     <p class="card-hint">

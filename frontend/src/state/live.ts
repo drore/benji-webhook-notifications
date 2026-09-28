@@ -50,3 +50,23 @@ export function updatedLabel(lastUpdatedAt: Date | null, nowMs = now.value): str
   if (minutes < 60) return `updated ${minutes}m ago`;
   return `updated ${Math.round(minutes / 60)}h ago`;
 }
+
+/**
+ * Panel header text. A healthy panel just says "live" so the label does not
+ * flicker on every poll; a panel that falls behind its own interval, or a
+ * frozen dashboard, states the age.
+ */
+export function freshnessLabel(
+  lastUpdatedAt: Date | null,
+  isFrozen: boolean,
+  nowMs = now.value,
+  intervalMs = 2000,
+): string {
+  if (isFrozen) {
+    return lastUpdatedAt ? `paused · ${updatedLabel(lastUpdatedAt, nowMs)}` : "paused";
+  }
+  if (!lastUpdatedAt) return "live";
+  const grace = Math.max(1000, intervalMs) * 2;
+  if (nowMs - lastUpdatedAt.getTime() < grace) return "live";
+  return `live · ${updatedLabel(lastUpdatedAt, nowMs)}`;
+}

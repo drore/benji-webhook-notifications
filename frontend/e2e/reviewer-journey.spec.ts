@@ -436,7 +436,7 @@ test.describe("reviewer journey", () => {
 
     await page.reload();
     await page.selectOption('[aria-label="Event type for the trend"]', eventType);
-    await page.getByRole("button", { name: /Refresh/ }).click();
+    await page.locator('[data-action="refresh-trend"]').click();
 
     await expect(page.getByTestId("trend-deliveries")).toContainText("4 deliveries");
     await expect(page.getByTestId("trend-success")).toContainText("50%");
@@ -455,8 +455,14 @@ test.describe("reviewer journey", () => {
     await configureReceiver(request, secret, "success");
     await enableEndpoint(page, name);
 
+    // The live indicator is a pulsing dot until the dashboard is paused.
+    await expect(page.getByTestId("live-state").locator(".live-dot")).toHaveCSS(
+      "animation-name",
+      "live-pulse",
+    );
     await page.getByTestId("freeze-toggle").click();
     await expect(page.getByTestId("live-state")).toHaveText("paused");
+    await expect(page.getByTestId("live-state").locator(".live-dot")).toHaveClass(/is-paused/);
     await expect(page.getByTestId("events-freshness")).toContainText("paused");
 
     // Publish behind the dashboard's back so only a refresh can reveal it.
@@ -475,5 +481,72 @@ test.describe("reviewer journey", () => {
 
     await page.getByTestId("freeze-toggle").click();
     await expect(page.getByTestId("live-state")).toHaveText("live");
+  });
+
+  test("REQ-007 simulated traffic pushes events on an interval", async ({ page, request }) => {
+    const suffix = uniqueSuffix();
+    const eventType = `e2e_sim_${suffix}`;
+    const name = `E2E Sim ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: [eventType] });
+    await configureReceiver(request, secret, "success");
+    await enableEndpoint(page, name);
+    // Reload so the simulator's type list includes the endpoint just created.
+    await page.reload();
+
+    await page.selectOption('[aria-label="Simulated event type"]', eventType);
+    await page.selectOption('[aria-label="Simulated interval"]', "2000");
+    await page.getByTestId("simulate-traffic").check();
+    await expect(page.getByTestId("simulator-status")).toContainText("pushing every 2s");
+
+    const rows = page.getByTestId("event-row").filter({ hasText: eventType });
+    await expect.poll(async () => rows.count(), { timeout: 20_000 }).toBeGreaterThan(1);
+
+    await page.getByTestId("simulate-traffic").uncheck();
+    await expect(page.getByTestId("simulator-status")).toContainText("stopped");
+    // Let any publish that was already in flight land and the list poll catch up.
+    await page.waitForTimeout(3000);
+    const settled = await rows.count();
+    await page.waitForTimeout(3000);
+    expect(await rows.count()).toBe(settled);
+  });
+
+  test("REQ-009 panels can be reordered and the layout is remembered", async ({ page }) => {
+    await page.goto("/");
+    const visualOrder = () =>
+      page
+        .locator(".column")
+        .first()
+        .locator("[data-panel-key]")
+        .evaluateAll((nodes) =>
+          nodes
+            .map((node) => ({
+              key: (node as HTMLElement).dataset.panelKey ?? "",
+              order: Number(getComputedStyle(node).order),
+            }))
+            .sort((a, b) => a.order - b.order)
+            .map((entry) => entry.key),
+        );
+
+    expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
+
+    const grip = page.locator('[data-panel-key="events"] .panel-grip');
+    await grip.hover();
+    await page.mouse.down();
+    const journeyBox = await page.locator('[data-panel-key="journey"]').boundingBox();
+    await page.mouse.move(journeyBox!.x + journeyBox!.width / 2, journeyBox!.y + 40, { steps: 8 });
+    await page.mouse.up();
+
+    const reordered = await visualOrder();
+    expect(reordered.indexOf("events")).toBeLessThan(reordered.indexOf("journey"));
+
+    // The arrangement is remembered across reloads.
+    await page.reload();
+    const afterReload = await visualOrder();
+    expect(afterReload.indexOf("events")).toBeLessThan(afterReload.indexOf("journey"));
+
+    await page.getByTestId("reset-layout").click();
+    expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
+    await expect(page.getByTestId("reset-layout")).toHaveCount(0);
   });
 });

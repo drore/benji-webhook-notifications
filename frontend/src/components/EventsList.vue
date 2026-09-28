@@ -12,7 +12,8 @@ import {
   setTypeFilter,
 } from "../state/filters";
 import { createEventsState } from "../state/events";
-import { frozen, now, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 
 const props = defineProps<{ api: DashboardApi; selectedEventId: string | null }>();
 const emit = defineEmits<{ select: [eventId: string] }>();
@@ -70,7 +71,8 @@ function age(createdAt: string): string {
     <div class="card-header">
       <h2>Recent events</h2>
       <span class="freshness" data-testid="events-freshness">
-        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+        <LiveDot :paused="frozen" />
+        {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
       </span>
     </div>
     <p class="card-hint">Select an event to follow its journey above.</p>

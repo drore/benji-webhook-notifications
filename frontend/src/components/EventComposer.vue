@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { createComposerState } from "../state/composer";
+import SimulatedTraffic from "./SimulatedTraffic.vue";
 
 const props = defineProps<{ api: DashboardApi }>();
 const {
@@ -202,6 +203,7 @@ function submitEvent(): void {
           New key
         </button>
       </div>
+      <SimulatedTraffic :api="api" />
       <p v-if="matchCount === 0" class="banner banner-warn" data-testid="no-subscribers">
         No enabled endpoint subscribes to <code>{{ effectiveType }}</code> yet — publishing
         stores the event with no deliveries.

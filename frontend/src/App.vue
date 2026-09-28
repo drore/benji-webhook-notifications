@@ -10,7 +10,18 @@ import EventComposer from "./components/EventComposer.vue";
 import EventFlow from "./components/EventFlow.vue";
 import EventsList from "./components/EventsList.vue";
 import IdLookup from "./components/IdLookup.vue";
+import LiveDot from "./components/LiveDot.vue";
+import PanelSlot from "./components/PanelSlot.vue";
 import { frozen, requestRefresh, startClock, stopClock, toggleFrozen } from "./state/live";
+import {
+  DEFAULT_LAYOUT,
+  PANEL_LABELS,
+  isDefaultLayout,
+  loadLayout,
+  movePanel,
+  saveLayout,
+} from "./state/panels";
+import type { PanelKey, PanelLayout } from "./state/panels";
 import { readSelection, selectionSearch } from "./state/location";
 import type { Selection } from "./state/location";
 
@@ -23,6 +34,36 @@ const reachable = ref(false);
 const initial = readSelection(window.location.search);
 const selectedEventId = ref<string | null>(initial.eventId);
 const selectedDeliveryId = ref<string | null>(initial.deliveryId);
+
+const layout = ref<PanelLayout>(loadLayout(window.localStorage));
+
+watch(layout, (value) => saveLayout(value, window.localStorage), { deep: true });
+
+function columnOf(key: PanelKey): keyof PanelLayout {
+  return layout.value.left.includes(key) ? "left" : "right";
+}
+
+function positionOf(key: PanelKey): number {
+  return layout.value[columnOf(key)].indexOf(key);
+}
+
+function movePanelTo(key: PanelKey, target: PanelKey): void {
+  if (key === target) return;
+  const from = columnOf(key);
+  const to = columnOf(target);
+  if (from === to) {
+    layout.value[from] = movePanel(layout.value[from], key, target);
+    return;
+  }
+  layout.value[from] = layout.value[from].filter((item) => item !== key);
+  const targetColumn = [...layout.value[to]];
+  targetColumn.splice(targetColumn.indexOf(target), 0, key);
+  layout.value[to] = targetColumn;
+}
+
+function resetLayout(): void {
+  layout.value = structuredClone(DEFAULT_LAYOUT);
+}
 
 watch([selectedEventId, selectedDeliveryId], ([eventId, deliveryId]) => {
   const search = selectionSearch({ eventId, deliveryId });
@@ -87,7 +128,19 @@ onMounted(async () => {
           >
             Refresh now
           </button>
-          <span class="freshness" data-testid="live-state">{{ frozen ? "paused" : "live" }}</span>
+          <button
+            v-if="!isDefaultLayout(layout)"
+            type="button"
+            class="btn btn-ghost btn-small"
+            data-testid="reset-layout"
+            @click="resetLayout"
+          >
+            Reset layout
+          </button>
+          <span class="freshness" data-testid="live-state">
+            <LiveDot :paused="frozen" />
+            {{ frozen ? "paused" : "live" }}
+          </span>
         </div>
       </div>
     </header>
@@ -96,22 +149,64 @@ onMounted(async () => {
     </p>
     <main class="layout">
       <div class="column">
-        <EventFlow
-          :api="api"
-          :event-id="selectedEventId"
-          @select-delivery="selectedDeliveryId = $event"
-        />
-        <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
-        <EventsList
-          :api="api"
-          :selected-event-id="selectedEventId"
-          @select="applySelection({ eventId: $event, deliveryId: null })"
-        />
-        <DeliveryTrend :api="api" />
+        <PanelSlot
+          panel-key="journey"
+          :label="PANEL_LABELS.journey"
+          :style="{ order: positionOf('journey') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <EventFlow
+            :api="api"
+            :event-id="selectedEventId"
+            @select-delivery="selectedDeliveryId = $event"
+          />
+        </PanelSlot>
+        <PanelSlot
+          panel-key="delivery"
+          :label="PANEL_LABELS.delivery"
+          :style="{ order: positionOf('delivery') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
+        </PanelSlot>
+        <PanelSlot
+          panel-key="events"
+          :label="PANEL_LABELS.events"
+          :style="{ order: positionOf('events') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <EventsList
+            :api="api"
+            :selected-event-id="selectedEventId"
+            @select="applySelection({ eventId: $event, deliveryId: null })"
+          />
+        </PanelSlot>
+        <PanelSlot
+          panel-key="trend"
+          :label="PANEL_LABELS.trend"
+          :style="{ order: positionOf('trend') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <DeliveryTrend :api="api" />
+        </PanelSlot>
       </div>
       <aside class="column">
-        <EventComposer :api="api" />
-        <EndpointsPanel :api="api" />
+        <PanelSlot
+          panel-key="composer"
+          :label="PANEL_LABELS.composer"
+          :style="{ order: positionOf('composer') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <EventComposer :api="api" />
+        </PanelSlot>
+        <PanelSlot
+          panel-key="endpoints"
+          :label="PANEL_LABELS.endpoints"
+          :style="{ order: positionOf('endpoints') }"
+          @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+        >
+          <EndpointsPanel :api="api" />
+        </PanelSlot>
       </aside>
     </main>
   </div>

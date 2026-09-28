@@ -7,7 +7,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi, EventDetail } from "../api/client";
 import { STATUS_COLORS } from "../state/delivery";
-import { frozen, now, refreshToken, shouldPoll, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now, refreshToken, shouldPoll } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 import EndpointNode from "./flow/EndpointNode.vue";
 import EventNode from "./flow/EventNode.vue";
 
@@ -157,7 +158,8 @@ function onNodeClick(payload: { node: Node }): void {
     <div class="card-header">
       <h2>Event journey</h2>
       <span v-if="event" class="freshness" data-testid="journey-freshness">
-        {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+        <LiveDot :paused="frozen" />
+        {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
       </span>
     </div>
     <p class="card-hint">

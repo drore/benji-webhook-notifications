@@ -280,6 +280,66 @@ button.signal-pill:hover {
   flex-wrap: wrap;
 }
 
+.simulator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.simulator select {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--navy);
+  max-width: 190px;
+}
+
+.simulator .banner {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45);
+  animation: live-pulse 2s ease-out infinite;
+  vertical-align: middle;
+}
+
+.live-dot.is-paused {
+  background: var(--warn);
+  animation: none;
+  box-shadow: none;
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(21, 128, 61, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(21, 128, 61, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}
+
 .switch.is-disabled {
   cursor: not-allowed;
   color: var(--muted);
@@ -347,6 +407,45 @@ button.signal-pill:hover {
   grid-template-columns: minmax(0, 1fr) 370px;
   gap: 20px;
   align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel-slot {
+  position: relative;
+}
+
+.panel-slot.dragging {
+  opacity: 0.65;
+}
+
+.panel-grip {
+  position: absolute;
+  top: 14px;
+  left: -20px;
+  width: 18px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--border-strong);
+  font-size: 13px;
+  line-height: 1;
+  cursor: grab;
+}
+
+.panel-grip:hover {
+  color: var(--purple);
+}
+
+@media (max-width: 960px) {
+  .panel-grip {
+    display: none;
+  }
 }
 
 .column {
@@ -812,10 +911,10 @@ pre {
 .timeline {
   list-style: none;
   margin: 0 0 16px;
-  padding: 0 0 0 24px;
+  padding: 0 0 0 22px;
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .timeline::before {
@@ -834,13 +933,13 @@ pre {
 
 .timeline-dot {
   position: absolute;
-  left: -24px;
-  top: 10px;
-  width: 16px;
-  height: 16px;
+  left: -22px;
+  top: 11px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--pending);
-  border: 3px solid var(--surface);
+  border: 2px solid var(--surface);
   box-shadow: 0 0 0 1px var(--border);
 }
 
@@ -863,13 +962,13 @@ pre {
 .timeline-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--surface);
 }
 
 .cycle-label {
-  margin: 12px 0 6px;
-  font-size: 11.5px;
+  margin: 10px 0 4px;
+  font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -884,17 +983,22 @@ pre {
 .attempt-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+.attempt-head .status-pill {
+  font-size: 11.5px;
+  padding: 2px 8px;
+}
+
 .attempt-number {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--pending-bg);
   color: var(--navy-soft);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -902,17 +1006,17 @@ pre {
 
 .attempt-time {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .timeline-card blockquote {
-  margin: 8px 0 0;
-  padding: 8px 10px;
+  margin: 6px 0 0;
+  padding: 6px 8px;
   background: #f8f9fd;
   border-left: 3px solid var(--border-strong);
   border-radius: 6px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--navy-soft);
   overflow-wrap: anywhere;
 }
@@ -923,14 +1027,14 @@ pre {
 }
 
 .attempt-help-trigger {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--navy-soft);
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1;
   cursor: help;

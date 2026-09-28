@@ -3,7 +3,8 @@ import { onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { setStatusFilter } from "../state/filters";
-import { now, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 import { createOverviewState } from "../state/overview";
 
 const props = defineProps<{ api: DashboardApi }>();
@@ -48,11 +49,9 @@ function formatDue(value: string | null | undefined): string {
       <strong data-testid="retrying-count">{{ overview?.retrying_count ?? 0 }}</strong>
       <small v-if="overview?.earliest_due_at">next {{ formatDue(overview.earliest_due_at) }}</small>
     </button>
-    <span v-if="overview?.latest_event" class="signal-pill signal-neutral">
-      Latest <code>{{ overview.latest_event.type }}</code>
-    </span>
     <span class="freshness" data-testid="overview-freshness">
-      {{ updatedLabel(lastUpdatedAt, now) }}
+      <LiveDot :paused="frozen" />
+      {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
     </span>
     <span v-if="stale" data-testid="stale-banner" class="signal-pill signal-danger">
       <span class="signal-dot" aria-hidden="true"></span>

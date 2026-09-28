@@ -2,7 +2,8 @@
 import { computed, onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
-import { frozen, now, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 import { TREND_WINDOWS, createTrendState } from "../state/trend";
 
 const props = defineProps<{ api: DashboardApi }>();
@@ -113,7 +114,8 @@ const durationLabel = computed(() => {
       </div>
     </div>
     <p class="freshness" data-testid="trend-freshness">
-      {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+      <LiveDot :paused="frozen" />
+      {{ freshnessLabel(lastUpdatedAt, frozen, now, 10000) }}
     </p>
     <p class="card-hint">
       Deliveries of one event type over time, bucketed by the selected window. A delivery counts

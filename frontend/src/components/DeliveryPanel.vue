@@ -5,7 +5,8 @@ import type { DashboardApi } from "../api/client";
 import { ApiError } from "../api/client";
 import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
 import { buildDeliveryReport, deliveryHeadline } from "../state/report";
-import { frozen, now, refreshToken, shouldPoll, updatedLabel } from "../state/live";
+import { freshnessLabel, frozen, now, refreshToken, shouldPoll } from "../state/live";
+import LiveDot from "./LiveDot.vue";
 import type { Attempt } from "../api/client";
 
 function explain(attempt: Attempt) {
@@ -184,7 +185,8 @@ function durationLabel(attempt: Attempt): string {
           {{ STATUS_LABELS[delivery.status] }}
         </span>
         <span class="freshness" data-testid="delivery-freshness">
-          {{ frozen ? "paused" : "live" }} · {{ updatedLabel(lastUpdatedAt, now) }}
+          <LiveDot :paused="frozen" />
+          {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
         </span>
       </div>
     </div>
