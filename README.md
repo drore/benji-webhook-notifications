@@ -128,4 +128,5 @@ This is a deliberately local, single-customer demo with no login. Destination UR
 
 - [Design specification](docs/spec/design.md) · [implementation plan](docs/plan/implementation-plan.md)
 - [Decisions and trade-offs](docs/process/decisions-and-tradeoffs.md) · [AI usage note](docs/process/ai-usage.md) · [focused work log](docs/process/worklog.md)
+- [Beyond the requirements](docs/process/beyond-the-requirements.md) — what this submission adds on top of the brief, with the evidence for each item
 - [Engineering instructions](AGENTS.md)
