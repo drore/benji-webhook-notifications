@@ -28,6 +28,26 @@ def test_expired_lease_without_budget_fails_replayable(make_env):
     assert [a["outcome"] for a in d["attempts"]] == ["interrupted"] * 3
 
 
+def test_worker_tick_recovers_expired_lease_without_manual_sweep(make_env):
+    """A restart inside the lease window must still recover the claim.
+
+    The running worker loop has to sweep expired leases on its own; recovery that
+    only happens at process start strands any claim whose lease expires later.
+    """
+    env = make_env(receiver_behavior="success", claim_lease_seconds="0.05")
+    env.create_endpoint(["a"])
+    env.submit_event("k", "a", {})
+    assert env.claim_due_delivery() is not None  # claim held by the "crashed" process
+    time.sleep(0.06)  # lease expires while that process is gone
+
+    asyncio.run(env.worker.tick())  # no manual sweep_leases() call
+
+    d = env.get_delivery(env.deliveries()[0]["id"])
+    assert [a["outcome"] for a in d["attempts"]] == ["interrupted", "success"]
+    assert d["status"] == "succeeded"
+    assert d["attempts"][1]["number"] == 2
+
+
 def test_global_and_per_endpoint_concurrency_limits(make_env):
     env = make_env(
         receiver_behavior="slow", slow_seconds=0.3, request_timeout="5", max_concurrency="2"

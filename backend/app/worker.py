@@ -29,6 +29,7 @@ class DeliveryWorker:
         self.settings = settings
 
     async def tick(self) -> int:
+        self.sweep_expired_leases()
         claimed: list[store.ClaimedDelivery] = []
         excluded: set[str] = set()
         while len(claimed) < self.settings.max_concurrency:
@@ -58,6 +59,15 @@ class DeliveryWorker:
             return
 
     async def recover(self) -> int:
+        return self.sweep_expired_leases()
+
+    def sweep_expired_leases(self) -> int:
+        """Reclaim claims whose lease expired.
+
+        Runs at startup and on every tick: a process that restarts inside the
+        lease window must still recover the interrupted delivery once the lease
+        expires instead of leaving it in_progress forever.
+        """
         conn = self._conn_factory()
         try:
             return store.sweep_expired_leases(
