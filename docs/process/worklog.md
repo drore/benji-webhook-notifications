@@ -7,7 +7,7 @@ tags: [benji, take-home, worklog, timebox]
 
 # Focused work log
 
-Records focused effort for the assignment's under-one-day constraint (CON-01). Times are local (Asia/Jerusalem). Rounded to the nearest five minutes; this log tracks wall-clock focus, not token usage.
+Records focused effort for the assignment's under-one-day constraint (CON-01). Times are local (Asia/Jerusalem). Rounded to the nearest five minutes; this log tracks wall-clock focus, not token usage. Each row is one interval of focused work: time outside the listed intervals, including the gap between calendar days, is not counted as effort.
 
 | Date | Interval | Focus | Notes |
 | --- | --- | --- | --- |
