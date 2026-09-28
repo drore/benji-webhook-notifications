@@ -81,6 +81,10 @@ export async function selectLatestEvent(page: Page, type: string): Promise<void>
   await page.getByTestId("event-row").filter({ hasText: type }).first().click();
 }
 
+export async function selectEventById(page: Page, eventId: string): Promise<void> {
+  await page.getByTestId("event-row").filter({ hasText: eventId }).first().click();
+}
+
 export function branchFor(page: Page, endpointName: string): Locator {
   return page.getByTestId("branch").filter({ hasText: endpointName });
 }

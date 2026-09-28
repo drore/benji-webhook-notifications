@@ -11,6 +11,7 @@ import {
   publishEvent,
   readSubmissionKey,
   RECEIVER_URL,
+  selectEventById,
   selectLatestEvent,
   setSubmissionKey,
   uniqueSuffix,
@@ -217,7 +218,9 @@ test.describe("reviewer journey", () => {
       type: "reward_transaction_created",
       payload: `{"n":1,"suffix":"${suffix}"}`,
     });
-    await selectLatestEvent(page, "reward_transaction_created");
+    const firstEvent = await acceptedEventId(page);
+    expect(firstEvent).toBeTruthy();
+    await selectEventById(page, firstEvent as string);
     await expect(branchFor(page, name)).toContainText("Delivered", { timeout: 15_000 });
     await branchFor(page, name).click();
     await expect(page.getByTestId("delivery-id")).toBeVisible();
@@ -226,9 +229,20 @@ test.describe("reviewer journey", () => {
       type: "reward_transaction_created",
       payload: `{"n":2,"suffix":"${suffix}"}`,
     });
-    await selectLatestEvent(page, "reward_transaction_created");
+    const secondEvent = await acceptedEventId(page);
+    expect(secondEvent).toBeTruthy();
+    await selectEventById(page, secondEvent as string);
 
     await expect(branchFor(page, name)).toBeVisible();
     await expect(page.getByTestId("delivery-id")).toHaveCount(0);
+  });
+
+  test("REQ-006 receiver lists a saved secret without a manual reload", async ({ page }) => {
+    const secret = `whsec_e2e_${uniqueSuffix()}secret`;
+    await page.goto(`${RECEIVER_URL}/`);
+    await page.getByPlaceholder("whsec_… one-time secret").fill(secret);
+    await page.getByRole("button", { name: "Save secret" }).click();
+
+    await expect(page.getByText(`••••${secret.slice(-4)}`)).toBeVisible();
   });
 });

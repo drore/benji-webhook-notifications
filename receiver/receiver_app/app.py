@@ -198,7 +198,8 @@ td code{{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f3f
 <script>document.getElementById('config').addEventListener('submit', async (e) => {{
 e.preventDefault(); const data = Object.fromEntries(new FormData(e.target));
 const response = await fetch('/api/config', {{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify(data)}});
-document.getElementById('status').textContent = response.ok ? 'Saved — reload to see it listed.' : 'Rejected.';
+if (response.ok) {{ document.getElementById('status').textContent = 'Saved.'; window.location.reload(); }}
+else {{ document.getElementById('status').textContent = 'Rejected.'; }}
 }});</script></body></html>"""
 
     return app
