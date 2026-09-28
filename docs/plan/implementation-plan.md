@@ -83,7 +83,7 @@ dev = ["pytest>=8.2", "anyio>=4.4"]
 
 - [ ] **Step 2: Create `.gitignore`** with `.venv/`, `__pycache__/`, `*.pyc`, `data/`, `node_modules/`, `frontend/dist/`, `frontend/test-results/`, `.DS_Store`.
 
-- [ ] **Step 3: Adapt `AGENTS.md`** from `/Users/drore/.codex/worktrees/benji-first-rope/benji-task/AGENTS.md`: keep its six principle sections (start with the contract; small complete slices; design for a human maintainer with SSOT; security and remote effects first-class; AI as checked collaborator; verify and hand off honestly), rewrite repo-specific specifics to: spec at `docs/spec/design.md` (frozen without Dror's approval), plan at `docs/plan/implementation-plan.md`, run/test commands from the README, no push without approval, loopback-only security boundaries.
+- [ ] **Step 3: Adapt `AGENTS.md`** from the earlier attempt's engineering instructions (kept outside this repository): keep its six principle sections (start with the contract; small complete slices; design for a human maintainer with SSOT; security and remote effects first-class; AI as checked collaborator; verify and hand off honestly), rewrite repo-specific specifics to: spec at `docs/spec/design.md` (frozen without Dror's approval), plan at `docs/plan/implementation-plan.md`, run/test commands from the README, no push without approval, loopback-only security boundaries.
 
 - [ ] **Step 4: Write the failing test `tests/test_skeleton.py`**
 
