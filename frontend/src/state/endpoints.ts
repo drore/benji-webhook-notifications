@@ -18,7 +18,10 @@ export function createEndpointsState(api: DashboardApi) {
   const error = ref<string | null>(null);
   const creating = ref(false);
   const togglingId = ref<string | null>(null);
-  const createdSecret = ref<{ endpointId: string; secret: string } | null>(null);
+  // Secrets are shown exactly once, so every unacknowledged secret stays on
+  // screen until the operator dismisses it — creating another endpoint must not
+  // swallow the previous one.
+  const pendingSecrets = ref<{ endpointId: string; name: string; secret: string }[]>([]);
   let timer: number | null = null;
 
   async function load(): Promise<void> {
@@ -43,7 +46,14 @@ export function createEndpointsState(api: DashboardApi) {
     error.value = null;
     try {
       const response = await api.createEndpoint(input);
-      createdSecret.value = { endpointId: response.endpoint.id, secret: response.secret };
+      pendingSecrets.value = [
+        ...pendingSecrets.value,
+        {
+          endpointId: response.endpoint.id,
+          name: response.endpoint.name,
+          secret: response.secret,
+        },
+      ];
       await load();
       return true;
     } catch (cause) {
@@ -70,8 +80,8 @@ export function createEndpointsState(api: DashboardApi) {
     }
   }
 
-  function dismissSecret(): void {
-    createdSecret.value = null;
+  function dismissSecret(endpointId: string): void {
+    pendingSecrets.value = pendingSecrets.value.filter((item) => item.endpointId !== endpointId);
   }
 
   function startPolling(intervalMs = DEFAULT_POLL_MS): void {
@@ -96,7 +106,7 @@ export function createEndpointsState(api: DashboardApi) {
     error,
     creating,
     togglingId,
-    createdSecret,
+    pendingSecrets,
     load,
     create,
     setEnabled,

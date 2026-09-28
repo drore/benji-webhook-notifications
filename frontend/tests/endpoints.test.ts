@@ -63,4 +63,37 @@ describe("EndpointsPanel", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Endpoint URL rejected.");
   });
+
+  it("keeps every undismissed secret visible until it is dismissed", async () => {
+    let created = 0;
+    const api = fakeApi({
+      listEndpoints: async () => ({ items: [] }),
+      createEndpoint: async () => {
+        created += 1;
+        return {
+          endpoint: { ...endpointFixture, id: `ep_${created}`, name: `CRM ${created}`, enabled: false },
+          secret: `whsec_${created}`,
+        };
+      },
+    });
+    const wrapper = mount(EndpointsPanel, { props: { api } });
+    await flushPromises();
+    for (const label of ["One", "Two"]) {
+      await wrapper.get('input[aria-label="Endpoint name"]').setValue(label);
+      await wrapper.get('[aria-label="Event types"]').setValue("a");
+      await wrapper.get('button[data-action="create-endpoint"]').trigger("click");
+      await flushPromises();
+    }
+
+    const banners = wrapper.findAll('[data-testid="secret-banner"]');
+    expect(banners).toHaveLength(2);
+    expect(banners[0].text()).toContain("whsec_1");
+    expect(banners[1].text()).toContain("whsec_2");
+
+    await banners[0].get('[data-action="dismiss-secret"]').trigger("click");
+    await wrapper.vm.$nextTick();
+    const remaining = wrapper.findAll('[data-testid="secret-banner"]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].text()).toContain("whsec_2");
+  });
 });

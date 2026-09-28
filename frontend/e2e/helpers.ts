@@ -29,11 +29,11 @@ export async function createEndpoint(
   await page.getByLabel("Endpoint name").fill(options.name);
   await page.getByLabel("Event types").fill(options.types.join(", "));
   await page.getByRole("button", { name: "Create endpoint" }).click();
-  const banner = page.getByTestId("secret-banner");
+  const banner = page.getByTestId("secret-banner").filter({ hasText: options.name });
   await expect(banner).toBeVisible();
   const secret = (await banner.locator("code").textContent())?.trim() ?? "";
   expect(secret).toMatch(/^whsec_/);
-  await page.getByRole("button", { name: "Dismiss" }).click();
+  await banner.getByRole("button", { name: "Dismiss" }).click();
   await expect(banner).toBeHidden();
   return secret;
 }

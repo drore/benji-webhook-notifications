@@ -11,7 +11,7 @@ const {
   error,
   creating,
   togglingId,
-  createdSecret,
+  pendingSecrets,
   load,
   create,
   setEnabled,
@@ -22,7 +22,7 @@ const {
 
 const name = ref("");
 const eventTypes = ref("");
-const copied = ref(false);
+const copiedId = ref<string | null>(null);
 
 onMounted(async () => {
   await load();
@@ -42,13 +42,12 @@ async function submit(): Promise<void> {
   }
 }
 
-async function copySecret(): Promise<void> {
-  if (!createdSecret.value) return;
+async function copySecret(endpointId: string, secret: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(createdSecret.value.secret);
-    copied.value = true;
+    await navigator.clipboard.writeText(secret);
+    copiedId.value = endpointId;
   } catch {
-    copied.value = false;
+    copiedId.value = null;
   }
 }
 </script>
@@ -82,16 +81,28 @@ async function copySecret(): Promise<void> {
       </button>
     </form>
     <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
-    <div v-if="createdSecret" data-testid="secret-banner" class="secret-banner">
-      <strong>Signing secret — shown once.</strong> Copy it into the receiver's config page now.
+    <div
+      v-for="pending in pendingSecrets"
+      :key="pending.endpointId"
+      data-testid="secret-banner"
+      class="secret-banner"
+    >
+      <strong>Signing secret — shown once.</strong>
+      {{ pending.name }} — copy it into the receiver's config page now. It stays listed until you
+      dismiss it.
       <div>
-        <code>{{ createdSecret.secret }}</code>
+        <code>{{ pending.secret }}</code>
       </div>
       <div class="secret-actions">
-        <button type="button" class="btn btn-small" @click="copySecret">
-          {{ copied ? "Copied" : "Copy secret" }}
+        <button type="button" class="btn btn-small" @click="copySecret(pending.endpointId, pending.secret)">
+          {{ copiedId === pending.endpointId ? "Copied" : "Copy secret" }}
         </button>
-        <button type="button" class="btn btn-small" data-action="dismiss-secret" @click="dismissSecret">
+        <button
+          type="button"
+          class="btn btn-small"
+          data-action="dismiss-secret"
+          @click="dismissSecret(pending.endpointId)"
+        >
           Dismiss
         </button>
       </div>
