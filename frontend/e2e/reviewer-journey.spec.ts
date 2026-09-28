@@ -245,4 +245,51 @@ test.describe("reviewer journey", () => {
 
     await expect(page.getByText(`••••${secret.slice(-4)}`)).toBeVisible();
   });
+
+  test("REQ-008 a deep link and the ID lookup restore an investigation view", async ({
+    page,
+    request,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Deep ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: ["reward_transaction_created"] });
+    await configureReceiver(request, secret, "success");
+    await enableEndpoint(page, name);
+
+    await publishEvent(page, {
+      type: "reward_transaction_created",
+      payload: `{"n":1,"suffix":"${suffix}"}`,
+    });
+    const firstEvent = (await acceptedEventId(page)) as string;
+    await selectEventById(page, firstEvent);
+    await expect(branchFor(page, name)).toContainText("Delivered", { timeout: 15_000 });
+    await branchFor(page, name).click();
+    const deliveryId = ((await page.getByTestId("delivery-id").textContent()) ?? "").trim();
+    expect(deliveryId).toMatch(/^dlv_/);
+    await expect(page).toHaveURL(new RegExp(`\\?event=${firstEvent}&delivery=${deliveryId}$`));
+
+    // Reloading keeps the same journey and selected delivery without any clicking.
+    await page.reload();
+    await expect(page.getByTestId("event-node")).toContainText(firstEvent);
+    await expect(page.getByTestId("delivery-id")).toContainText(deliveryId);
+
+    // A new event does not steal the view; the lookup jumps to it by ID.
+    await publishEvent(page, {
+      type: "reward_transaction_created",
+      payload: `{"n":2,"suffix":"${suffix}"}`,
+    });
+    const secondEvent = (await acceptedEventId(page)) as string;
+    await page.getByLabel("Find by ID").fill(secondEvent);
+    await page.getByRole("button", { name: "Find" }).click();
+    await expect(page.getByTestId("event-node")).toContainText(secondEvent);
+    await expect(page.getByTestId("delivery-id")).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`\\?event=${secondEvent}$`));
+
+    // A delivery ID jumps back to the event that owns it.
+    await page.getByLabel("Find by ID").fill(deliveryId);
+    await page.getByRole("button", { name: "Find" }).click();
+    await expect(page.getByTestId("event-node")).toContainText(firstEvent);
+    await expect(page.getByTestId("delivery-id")).toContainText(deliveryId);
+  });
 });

@@ -95,6 +95,48 @@ body {
   flex-wrap: wrap;
 }
 
+.topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.lookup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lookup-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lookup input {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  width: 190px;
+  background: var(--surface);
+  color: var(--navy);
+}
+
+.lookup input:focus {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+  border-color: var(--purple);
+}
+
+.lookup-error {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--err);
+}
+
 .signal-pill {
   display: inline-flex;
   align-items: center;
