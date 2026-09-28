@@ -2,11 +2,23 @@
 
 A locally runnable webhook sender and operations dashboard for the [Benji senior engineer take-home](https://even-foxglove-53c.notion.site/Sr-Software-Engineer-380b9f151bae81218487d84c42741d17). Endpoints subscribe to event types; publishing an event fans out one signed HTTP delivery per matching enabled endpoint; a worker retries transport failures with bounded exponential backoff; failures keep their full attempt history and can be replayed. The Vue dashboard shows the event fan-out, live status, attempts, and replay.
 
-**Status:** local candidate. Tests pass locally; nothing has been pushed or submitted.
+**Status:** local candidate, verified from a clean clone of the current revision (backend, frontend, and browser suites — the exact commands and counts are in the [plan's evidence section](docs/plan/implementation-plan.md)). Nothing has been pushed or submitted.
 
 This lean design builds on the specification developed in the earlier Benji attempt, reusing its settled contracts: endpoint-owned subscriptions and fan-out, HMAC-SHA256 signing with a one-time secret, ±300s timestamp window and delivery-id deduplication, 2s/4s three-attempt backoff with replay, server-generated event IDs with a separate sender idempotency key, loopback-only destination policy, and the safe `{code, message}` error envelope. The workflow/version layer is deliberately not carried over; see [design](docs/spec/design.md) and [plan](docs/plan/implementation-plan.md).
 
 ## How delivery works
+
+```mermaid
+flowchart LR
+    D["Dashboard · Vue 3<br/>polls every 2s, pausable<br/>publish · simulate traffic"] -->|"POST /api/events, GET snapshots"| A
+    subgraph S["Sender · FastAPI on 127.0.0.1:8000"]
+        A["REST API"] -->|"accept event + one delivery per<br/>matching enabled endpoint"| Q[("SQLite WAL<br/>durable queue")]
+        W["Delivery worker<br/>4 concurrent · 1 per endpoint"] -->|"claim due work"| Q
+    end
+    W -->|"HMAC-signed POST /webhooks/{id}<br/>2s timeout · 2s/4s backoff · 3 attempts"| R["Demo receiver · 127.0.0.1:9000<br/>verifies signature, dedupes by delivery id"]
+```
+
+In words: the dashboard publishes an event to the API, the API persists it plus one delivery per matching enabled endpoint, the in-process worker claims due deliveries and posts signed requests with bounded retries, and every status and attempt is read back into the dashboard.
 
 Publishing an event persists it with one logical delivery per matching enabled endpoint, then a worker attempts each delivery over HTTP:
 
@@ -24,6 +36,14 @@ No external broker or service is involved: SQLite is the durable queue, and rest
 - Node.js 22 and npm
 
 No database, broker, or hosted service is required. Everything runs on loopback: sender API `127.0.0.1:8000`, demo receiver `127.0.0.1:9000`, dashboard `127.0.0.1:5173`.
+
+## Reviewing locally
+
+1. Install once: `uv sync --python 3.12 --group dev`, then `cd frontend && npm ci`.
+2. Start the three services from [Run the demo](#run-the-demo) and open the dashboard at <http://127.0.0.1:5173/> (the receiver is at <http://127.0.0.1:9000/> and the API docs at <http://127.0.0.1:8000/docs>).
+3. Follow the [reviewer walkthrough](#reviewer-walkthrough): create two endpoints, paste their one-time secrets into the receiver, publish an event, watch a fail-once retry succeed, then replay a failure and demonstrate a deduplicated resubmission.
+4. Re-run the checks yourself: `uv run pytest -q`, `cd frontend && npm test && npm run build`, and `python3 scripts/run_e2e.py` (which boots all three services on free ports and drives them in Chromium).
+5. For the reasoning behind the shape, read the [design specification](docs/spec/design.md), the [implementation plan](docs/plan/implementation-plan.md), the [decisions and trade-offs](docs/process/decisions-and-tradeoffs.md), and the [AI-usage note](docs/process/ai-usage.md).
 
 ## Setup
 
