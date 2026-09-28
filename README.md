@@ -2,7 +2,7 @@
 
 A locally runnable webhook sender and operations dashboard for the [Benji senior engineer take-home](https://even-foxglove-53c.notion.site/Sr-Software-Engineer-380b9f151bae81218487d84c42741d17). Endpoints subscribe to event types; publishing an event fans out one signed HTTP delivery per matching enabled endpoint; a worker retries transport failures with bounded exponential backoff; failures keep their full attempt history and can be replayed. The Vue dashboard shows the event fan-out, live status, attempts, and replay.
 
-**Status:** local candidate, verified from a clean clone of the current revision (backend, frontend, and browser suites — the exact commands and counts are in the [plan's evidence section](docs/plan/implementation-plan.md)). Nothing has been pushed or submitted.
+**Status:** candidate verified from a clean clone (backend, frontend, and browser suites — exact commands and counts in the [plan's evidence section](docs/plan/implementation-plan.md)). Pushed to the private review repository `drore/benji-webhook-notifications` on branch `lean-webhook-build`; the remote is the verified revision, and submission to Benji is still pending.
 
 This lean design builds on the specification developed in the earlier Benji attempt, reusing its settled contracts: endpoint-owned subscriptions and fan-out, HMAC-SHA256 signing with a one-time secret, ±300s timestamp window and delivery-id deduplication, 2s/4s three-attempt backoff with replay, server-generated event IDs with a separate sender idempotency key, loopback-only destination policy, and the safe `{code, message}` error envelope. The workflow/version layer is deliberately not carried over; see [design](docs/spec/design.md) and [plan](docs/plan/implementation-plan.md).
 
