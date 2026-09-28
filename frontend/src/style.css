@@ -209,6 +209,19 @@ button.signal-pill:hover {
   flex-wrap: wrap;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delivery-headline {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--navy-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 .switch.is-disabled {
   cursor: not-allowed;
   color: var(--muted);

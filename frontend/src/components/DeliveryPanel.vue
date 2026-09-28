@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
+import { buildDeliveryReport, deliveryHeadline } from "../state/report";
 import type { Attempt } from "../api/client";
 
 function explain(attempt: Attempt) {
@@ -46,6 +47,24 @@ onUnmounted(stopPolling);
 const canReplay = computed(
   () => delivery.value?.status === "failed" && delivery.value?.endpoint.enabled === true,
 );
+
+const copiedReport = ref(false);
+
+async function copyReport(): Promise<void> {
+  if (!delivery.value) return;
+  const link =
+    `${window.location.origin}${window.location.pathname}` +
+    `?event=${delivery.value.event.id}&delivery=${delivery.value.id}`;
+  try {
+    await navigator.clipboard.writeText(buildDeliveryReport(delivery.value, link));
+    copiedReport.value = true;
+    window.setTimeout(() => {
+      copiedReport.value = false;
+    }, 1500);
+  } catch {
+    copiedReport.value = false;
+  }
+}
 
 const ATTEMPTS_PER_CYCLE = 3;
 
@@ -104,13 +123,27 @@ function durationLabel(attempt: Attempt): string {
   <section class="card">
     <div class="card-header">
       <h2>Delivery detail</h2>
-      <span v-if="delivery" class="status-pill" :data-status="delivery.status">
-        {{ STATUS_LABELS[delivery.status] }}
-      </span>
+      <div class="header-actions">
+        <button
+          v-if="delivery"
+          type="button"
+          class="btn btn-small"
+          data-action="copy-report"
+          @click="copyReport"
+        >
+          {{ copiedReport ? "Copied" : "Copy report" }}
+        </button>
+        <span v-if="delivery" class="status-pill" :data-status="delivery.status">
+          {{ STATUS_LABELS[delivery.status] }}
+        </span>
+      </div>
     </div>
     <p class="card-hint">
       The attempt log for the selected branch. Replay only terminal failures; earlier attempts
       stay visible.
+    </p>
+    <p v-if="delivery" class="delivery-headline" data-testid="delivery-headline">
+      {{ deliveryHeadline(delivery) }}
     </p>
     <p v-if="!deliveryId" class="empty-state">
       Select a branch in the journey above to inspect its payload and attempts.

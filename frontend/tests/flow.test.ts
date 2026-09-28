@@ -6,7 +6,10 @@ import EventFlow from "../src/components/EventFlow.vue";
 import { createDashboardApi } from "../src/api/client";
 import type { DashboardApi, DeliveryDetail } from "../src/api/client";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function fakeApi(overrides: Partial<DashboardApi> = {}): DashboardApi {
   return { ...createDashboardApi(), ...overrides };
@@ -220,6 +223,23 @@ describe("EventFlow and DeliveryPanel", () => {
     const attempt = wrapper.get('[data-testid="attempt-row"]');
     expect(attempt.text()).toContain("Timeout");
     expect(attempt.text().toLowerCase()).toContain("outcome unknown");
+  });
+
+  it("shows the outcome headline and copies a report", async () => {
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const api = fakeApi({ getDelivery: async () => deliveryFixture });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="delivery-headline"]').text()).toContain("Failed");
+    await wrapper.get('[data-action="copy-report"]').trigger("click");
+    await flushPromises();
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toContain("dlv_1");
+    expect(writeText.mock.calls[0][0]).toContain("## Attempts");
+    expect(wrapper.get('[data-action="copy-report"]').text()).toContain("Copied");
   });
 
   it("groups attempts by retry cycle and shows the running attempt", async () => {
