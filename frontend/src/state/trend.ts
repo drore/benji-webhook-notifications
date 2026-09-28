@@ -2,9 +2,7 @@ import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, EventTypeInfo, EventTypeStats } from "../api/client";
-import { refreshToken, shouldPoll } from "./live";
-
-const DEFAULT_POLL_MS = 10000;
+import { TREND_POLL_INTERVAL_MS, refreshToken, shouldPoll } from "./live";
 
 export const TREND_WINDOWS = [
   { value: 6, label: "Last 6 hours", buckets: 12 },
@@ -71,7 +69,7 @@ export function createTrendState(api: DashboardApi) {
   watch([eventType, hours], () => void load());
   watch(refreshToken, () => void load());
 
-  function startPolling(intervalMs = DEFAULT_POLL_MS): void {
+  function startPolling(intervalMs = TREND_POLL_INTERVAL_MS): void {
     stopPolling();
     timer = window.setInterval(() => {
       if (shouldPoll()) void load();

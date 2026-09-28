@@ -112,8 +112,8 @@ function age(createdAt: string): string {
         Clear
       </button>
     </div>
-    <p v-if="stale" class="banner banner-warn">Event status may be stale.</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p v-if="stale" class="banner banner-warn" role="status">Event status may be stale.</p>
+    <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
     <p v-if="loading && !events.length" class="muted">Loading events…</p>
     <div v-else-if="!events.length" class="empty-state">
       <template v-if="hasActiveFilter()">

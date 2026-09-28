@@ -53,7 +53,7 @@ function formatDue(value: string | null | undefined): string {
       <LiveDot :paused="frozen" />
       {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
     </span>
-    <span v-if="stale" data-testid="stale-banner" class="signal-pill signal-danger">
+    <span v-if="stale" data-testid="stale-banner" class="signal-pill signal-danger" role="status">
       <span class="signal-dot" aria-hidden="true"></span>
       Status may be stale — last updated
       {{ lastUpdatedAt?.toLocaleTimeString() ?? "never" }}

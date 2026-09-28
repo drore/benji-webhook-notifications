@@ -3,9 +3,23 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { ApiError } from "../api/client";
-import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
+import {
+  ATTEMPTS_PER_CYCLE,
+  attemptDurationLabel,
+  attemptExplanation,
+  attemptSummary,
+  createDeliveryState,
+  STATUS_LABELS,
+} from "../state/delivery";
 import { buildDeliveryReport, deliveryHeadline } from "../state/report";
-import { freshnessLabel, frozen, now, refreshToken, shouldPoll } from "../state/live";
+import {
+  POLL_INTERVAL_MS,
+  freshnessLabel,
+  frozen,
+  now,
+  refreshToken,
+  shouldPoll,
+} from "../state/live";
 import LiveDot from "./LiveDot.vue";
 import type { Attempt } from "../api/client";
 
@@ -23,7 +37,7 @@ function startPolling(): void {
   stopPolling();
   timer = window.setInterval(() => {
     if (shouldPoll() && props.deliveryId) void load(props.deliveryId);
-  }, 2000);
+  }, POLL_INTERVAL_MS);
 }
 
 function stopPolling(): void {
@@ -114,8 +128,6 @@ async function copyReport(): Promise<void> {
   }
 }
 
-const ATTEMPTS_PER_CYCLE = 3;
-
 const cycles = computed(() => {
   const groups: { index: number; attempts: Attempt[] }[] = [];
   for (const [position, attempt] of (delivery.value?.attempts ?? []).entries()) {
@@ -160,11 +172,6 @@ function outcomeTone(outcome: string | null): string {
   return "pending";
 }
 
-function durationLabel(attempt: Attempt): string {
-  if (!attempt.finished_at) return "in flight";
-  const ms = new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime();
-  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
-}
 </script>
 
 <template>
@@ -201,7 +208,7 @@ function durationLabel(attempt: Attempt): string {
       Select a branch in the journey above to inspect its payload and attempts.
     </p>
     <p v-else-if="loading && !delivery" class="muted">Loading delivery…</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
     <template v-if="delivery">
       <dl class="delivery-facts">
         <dt>Endpoint</dt>
@@ -247,7 +254,7 @@ function durationLabel(attempt: Attempt): string {
           Open receiver
         </a>
       </div>
-      <p v-if="actionError" class="banner banner-error">{{ actionError }}</p>
+      <p v-if="actionError" class="banner banner-error" role="alert">{{ actionError }}</p>
       <h3 style="font-size: 14px; margin: 0 0 8px">Payload</h3>
       <pre data-testid="payload-json">{{ JSON.stringify(delivery.event.payload, null, 2) }}</pre>
       <h3 style="font-size: 14px; margin: 0 0 8px">Attempts</h3>
@@ -298,7 +305,7 @@ function durationLabel(attempt: Attempt): string {
                     ? new Date(attempt.finished_at).toLocaleTimeString()
                     : "…"
                 }}
-                · {{ durationLabel(attempt) }}
+                · {{ attemptDurationLabel(attempt) }}
               </span>
             </div>
             <blockquote v-if="attempt.response_excerpt">{{ attempt.response_excerpt }}</blockquote>
@@ -348,7 +355,7 @@ function durationLabel(attempt: Attempt): string {
         <p v-else-if="delivery.status !== 'failed'" data-testid="replay-unavailable" class="muted">
           Replay becomes available if this delivery ends in failure.
         </p>
-        <p v-if="replayError" class="banner banner-error">{{ replayError }}</p>
+        <p v-if="replayError" class="banner banner-error" role="alert">{{ replayError }}</p>
       </div>
     </template>
   </section>

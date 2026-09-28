@@ -117,4 +117,14 @@ describe("DeliveryTrend", () => {
     expect(wrapper.get('[data-testid="trend-empty"]').text()).toContain("No deliveries");
     expect(wrapper.find('[data-testid="trend-chart"]').exists()).toBe(false);
   });
+
+  it("shows a loading state before the first stats arrive", async () => {
+    const api = fakeApi({
+      getEventTypeStats: (() => new Promise(() => {})) as unknown as DashboardApi["getEventTypeStats"],
+    });
+    const wrapper = mount(DeliveryTrend, { props: { api } });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="trend-loading"]').text()).toContain("Loading trend");
+    wrapper.unmount();
+  });
 });

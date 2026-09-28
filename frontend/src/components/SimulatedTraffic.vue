@@ -61,6 +61,6 @@ onUnmounted(stop);
             : "idle"
       }}
     </span>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
   </div>
 </template>

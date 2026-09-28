@@ -139,7 +139,7 @@ onMounted(async () => {
         </div>
       </div>
     </header>
-    <p v-if="!reachable" data-testid="api-status" class="banner banner-error">
+    <p v-if="!reachable" data-testid="api-status" class="banner banner-error" role="alert">
       {{ status }}
     </p>
     <main class="layout">

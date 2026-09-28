@@ -1,7 +1,16 @@
 import { ref } from "vue";
 
 import { ApiError } from "../api/client";
-import type { DashboardApi, DeliveryDetail, DeliveryStatus } from "../api/client";
+import type { Attempt, DashboardApi, DeliveryDetail, DeliveryStatus } from "../api/client";
+
+/** One cycle is three attempts (FR-04); attempts beyond that belong to a replay. */
+export const ATTEMPTS_PER_CYCLE = 3;
+
+export function attemptDurationLabel(attempt: Attempt): string {
+  if (!attempt.finished_at) return "in flight";
+  const ms = new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime();
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
 
 export const STATUS_LABELS: Record<DeliveryStatus, string> = {
   pending: "Pending",
@@ -154,20 +163,20 @@ export function attemptProgress(
     case "pending":
       return "waiting for the first attempt";
     case "in_progress":
-      return `attempt ${cycleAttempts + 1} of 3 in flight`;
+      return `attempt ${cycleAttempts + 1} of ${ATTEMPTS_PER_CYCLE} in flight`;
     case "retrying": {
       const seconds = dueAt ? Math.round((new Date(dueAt).getTime() - now) / 1000) : null;
       const when = seconds === null ? "scheduled" : seconds <= 0 ? "due now" : `next attempt in ${seconds}s`;
-      return `attempt ${cycleAttempts + 1} of 3 · ${when}`;
+      return `attempt ${cycleAttempts + 1} of ${ATTEMPTS_PER_CYCLE} · ${when}`;
     }
     case "paused":
-      return `paused with ${cycleAttempts} of 3 attempts used this cycle`;
+      return `paused with ${cycleAttempts} of ${ATTEMPTS_PER_CYCLE} attempts used this cycle`;
     case "succeeded":
       return `delivered on attempt ${Math.max(attemptsCount, 1)}`;
     case "failed":
       return cycleAttempts === attemptsCount
-        ? `failed after ${cycleAttempts} of 3 attempts`
-        : `failed after ${cycleAttempts} of 3 this cycle · ${attemptsCount} attempts overall`;
+        ? `failed after ${cycleAttempts} of ${ATTEMPTS_PER_CYCLE} attempts`
+        : `failed after ${cycleAttempts} of ${ATTEMPTS_PER_CYCLE} this cycle · ${attemptsCount} attempts overall`;
   }
 }
 

@@ -2,9 +2,7 @@ import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, Overview } from "../api/client";
-import { refreshToken, shouldPoll } from "./live";
-
-const DEFAULT_POLL_MS = 2000;
+import { POLL_INTERVAL_MS, refreshToken, shouldPoll } from "./live";
 
 export function createOverviewState(api: DashboardApi) {
   const overview = ref<Overview | null>(null);
@@ -29,7 +27,7 @@ export function createOverviewState(api: DashboardApi) {
     }
   }
 
-  function startPolling(intervalMs = DEFAULT_POLL_MS): void {
+  function startPolling(intervalMs = POLL_INTERVAL_MS): void {
     stopPolling();
     void load();
     timer = window.setInterval(() => {

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Note for reviewers:** the step checkboxes below are the plan as it was written, not a progress tracker — every task was completed and the evidence is in [Execution Evidence](#execution-evidence-2026-09-27-branch-lean-webhook-build) at the end of this file.
+
 **Goal:** Build a locally runnable webhook sender with an operations dashboard: endpoints with event-type subscriptions, signed delivery with bounded exponential retries, replay, deduplication, and live attempt inspection.
 
 **Architecture:** One FastAPI process serves the API and runs an asyncio delivery worker in its lifespan. SQLite (WAL) is the durable queue: event acceptance persists the event and its deliveries in one transaction; the worker claims due deliveries with a lease, signs and posts via httpx, and records attempts. A separate tiny FastAPI demo receiver verifies signatures and supports success/fail-once/always-fail/slow behaviors. A Vue 3 + TypeScript SPA (Vite, polling every 2s) is the dashboard, split into API client, state composables, and presentational components.

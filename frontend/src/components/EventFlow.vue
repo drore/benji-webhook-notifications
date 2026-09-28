@@ -7,7 +7,14 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi, EventDetail } from "../api/client";
 import { STATUS_COLORS } from "../state/delivery";
-import { freshnessLabel, frozen, now, refreshToken, shouldPoll } from "../state/live";
+import {
+  POLL_INTERVAL_MS,
+  freshnessLabel,
+  frozen,
+  now,
+  refreshToken,
+  shouldPoll,
+} from "../state/live";
 import LiveDot from "./LiveDot.vue";
 import EndpointNode from "./flow/EndpointNode.vue";
 import EventNode from "./flow/EventNode.vue";
@@ -78,7 +85,7 @@ function startPolling(): void {
   stopPolling();
   timer = window.setInterval(() => {
     if (shouldPoll()) void load();
-  }, 2000);
+  }, POLL_INTERVAL_MS);
 }
 
 function stopPolling(): void {
@@ -184,7 +191,7 @@ function onNodeClick(payload: { node: Node }): void {
       Select an event from Recent events to follow its delivery journey.
     </p>
     <p v-if="loading && !event" class="muted">Loading event…</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
     <template v-if="event">
       <div v-if="event.deliveries.length === 0" data-testid="no-receivers" class="empty-state">
         No receivers matched this event — it is stored without deliveries.

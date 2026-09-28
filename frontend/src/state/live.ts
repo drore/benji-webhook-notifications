@@ -9,6 +9,10 @@ export const frozen = ref(false);
 export const refreshToken = ref(0);
 export const now = ref(Date.now());
 
+/** FR-10: the dashboard refreshes every two seconds while the tab is visible. */
+export const POLL_INTERVAL_MS = 2000;
+export const TREND_POLL_INTERVAL_MS = 10000;
+
 let clock: number | null = null;
 
 export function setFrozen(value: boolean): void {
@@ -60,7 +64,7 @@ export function freshnessLabel(
   lastUpdatedAt: Date | null,
   isFrozen: boolean,
   nowMs = now.value,
-  intervalMs = 2000,
+  intervalMs = POLL_INTERVAL_MS,
 ): string {
   if (isFrozen) {
     return lastUpdatedAt ? `paused · ${updatedLabel(lastUpdatedAt, nowMs)}` : "paused";

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
-import { freshnessLabel, frozen, now } from "../state/live";
+import { TREND_POLL_INTERVAL_MS, freshnessLabel, frozen, now } from "../state/live";
 import LiveDot from "./LiveDot.vue";
 import { TREND_WINDOWS, createTrendState } from "../state/trend";
 
@@ -115,13 +115,14 @@ const durationLabel = computed(() => {
     </div>
     <p class="freshness" data-testid="trend-freshness">
       <LiveDot :paused="frozen" />
-      {{ freshnessLabel(lastUpdatedAt, frozen, now, 10000) }}
+      {{ freshnessLabel(lastUpdatedAt, frozen, now, TREND_POLL_INTERVAL_MS) }}
     </p>
     <p class="card-hint">
       Deliveries of one event type over time, bucketed by the selected window. A delivery counts
       under its current status, so a recent bucket can still change.
     </p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p v-if="error" class="banner banner-error" role="alert">{{ error }}</p>
+    <p v-else-if="!stats && loading" class="muted" data-testid="trend-loading">Loading trend…</p>
     <template v-if="stats">
       <div class="trend-summary">
         <span class="signal-pill signal-neutral" data-testid="trend-deliveries">

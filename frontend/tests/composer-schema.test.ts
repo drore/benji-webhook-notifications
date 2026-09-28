@@ -130,4 +130,31 @@ describe("EventComposer schema enforcement", () => {
 
     expect(wrapper.text()).toContain("points: Input should be greater than or equal to 0");
   });
+
+  it("disables its inputs while a publish is in flight", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const api = fakeApi({
+      submitEvent: (async () => {
+        await gate;
+        return { event_id: "evt_pending", deduplicated: false };
+      }) as unknown as DashboardApi["submitEvent"],
+    });
+    const wrapper = mount(EventComposer, { props: { api } });
+    await flushPromises();
+
+    await wrapper.get('button[data-action="submit-event"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect((wrapper.get('input[data-testid="submission-key"]').element as HTMLInputElement).disabled).toBe(true);
+    expect((wrapper.get('textarea[aria-label="Payload"]').element as HTMLTextAreaElement).disabled).toBe(true);
+    expect((wrapper.get('button[data-action="new-key"]').element as HTMLButtonElement).disabled).toBe(true);
+
+    release();
+    await flushPromises();
+    expect((wrapper.get('input[data-testid="submission-key"]').element as HTMLInputElement).disabled).toBe(false);
+    expect(wrapper.get('[data-testid="accepted"]').text()).toContain("evt_pending");
+  });
 });

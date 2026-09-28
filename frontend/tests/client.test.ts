@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createDashboardApi } from "../src/api/client";
+import { createDashboardApi } from "../src/api/client";
 
 describe("client", () => {
   it("maps API error envelopes to ApiError", async () => {

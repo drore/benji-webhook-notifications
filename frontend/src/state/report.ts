@@ -1,13 +1,10 @@
 import type { Attempt, DeliveryDetail } from "../api/client";
-import { attemptSummary, STATUS_LABELS } from "./delivery";
-
-const ATTEMPTS_PER_CYCLE = 3;
-
-function durationLabel(attempt: Attempt): string {
-  if (!attempt.finished_at) return "in flight";
-  const ms = new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime();
-  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
-}
+import {
+  ATTEMPTS_PER_CYCLE,
+  attemptDurationLabel,
+  attemptSummary,
+  STATUS_LABELS,
+} from "./delivery";
 
 /** One line an operator can read at a glance in the delivery panel. */
 export function deliveryHeadline(delivery: DeliveryDetail): string {
@@ -33,7 +30,7 @@ function attemptLine(attempt: Attempt): string {
   const excerpt = attempt.response_excerpt ? ` · \`${attempt.response_excerpt}\`` : "";
   return (
     `#${attempt.number} ${attemptSummary(attempt.outcome, attempt.http_status)}` +
-    ` · ${started} → ${finished} · ${durationLabel(attempt)}${excerpt}`
+    ` · ${started} → ${finished} · ${attemptDurationLabel(attempt)}${excerpt}`
   );
 }
 

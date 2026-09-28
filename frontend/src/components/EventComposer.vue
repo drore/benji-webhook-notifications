@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
 import { createComposerState } from "../state/composer";
+import { POLL_INTERVAL_MS } from "../state/live";
 import SimulatedTraffic from "./SimulatedTraffic.vue";
 
 const props = defineProps<{ api: DashboardApi }>();
@@ -92,7 +93,7 @@ onMounted(() => {
   void loadEventTypes();
   timer = window.setInterval(() => {
     if (!document.hidden) void refreshMatches(effectiveType.value);
-  }, 2000);
+  }, POLL_INTERVAL_MS);
 });
 onUnmounted(() => {
   if (timer !== null) window.clearInterval(timer);
@@ -180,6 +181,7 @@ function submitEvent(): void {
         <input
           :value="submissionKey"
           data-testid="submission-key"
+          :disabled="submitting"
           @input="updateKey(($event.target as HTMLInputElement).value)"
         />
       </label>
@@ -204,7 +206,12 @@ function submitEvent(): void {
         </button>
       </div>
       <SimulatedTraffic :api="api" />
-      <p v-if="matchCount === 0" class="banner banner-warn" data-testid="no-subscribers">
+      <p
+        v-if="matchCount === 0"
+        class="banner banner-warn"
+        data-testid="no-subscribers"
+        role="status"
+      >
         No enabled endpoint subscribes to <code>{{ effectiveType }}</code> yet — publishing
         stores the event with no deliveries.
       </p>
@@ -224,7 +231,7 @@ function submitEvent(): void {
       Already accepted as <code>{{ outcome.eventId }}</code> — deduplicated resubmission, no new
       deliveries.
     </p>
-    <p v-else-if="outcome?.kind === 'conflict'" data-testid="conflict" class="banner banner-error" style="margin-top: 12px">
+    <p v-else-if="outcome?.kind === 'conflict'" data-testid="conflict" class="banner banner-error" role="alert" style="margin-top: 12px">
       {{ outcome.message }}
     </p>
     <div
@@ -243,7 +250,7 @@ function submitEvent(): void {
         </button>
       </span>
     </div>
-    <p v-else-if="outcome?.kind === 'error'" class="banner banner-error" style="margin-top: 12px">
+    <p v-else-if="outcome?.kind === 'error'" class="banner banner-error" role="alert" style="margin-top: 12px">
       {{ outcome.message }}
     </p>
   </section>

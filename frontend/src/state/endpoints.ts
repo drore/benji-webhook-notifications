@@ -2,9 +2,7 @@ import { ref, watch } from "vue";
 
 import { ApiError } from "../api/client";
 import type { DashboardApi, Endpoint, EndpointCreate } from "../api/client";
-import { refreshToken, shouldPoll } from "./live";
-
-const DEFAULT_POLL_MS = 2000;
+import { POLL_INTERVAL_MS, refreshToken, shouldPoll } from "./live";
 
 function describe(cause: unknown): string {
   if (cause instanceof ApiError) return cause.message;
@@ -85,7 +83,7 @@ export function createEndpointsState(api: DashboardApi) {
     pendingSecrets.value = pendingSecrets.value.filter((item) => item.endpointId !== endpointId);
   }
 
-  function startPolling(intervalMs = DEFAULT_POLL_MS): void {
+  function startPolling(intervalMs = POLL_INTERVAL_MS): void {
     stopPolling();
     timer = window.setInterval(() => {
       if (shouldPoll()) void load();

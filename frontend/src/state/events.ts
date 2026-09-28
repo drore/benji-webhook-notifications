@@ -3,9 +3,8 @@ import { ref, watch } from "vue";
 import { ApiError } from "../api/client";
 import type { DashboardApi, EventListParams, EventSummary } from "../api/client";
 import { eventFilters } from "./filters";
-import { refreshToken, shouldPoll } from "./live";
+import { POLL_INTERVAL_MS, refreshToken, shouldPoll } from "./live";
 
-const DEFAULT_POLL_MS = 2000;
 const PAGE_SIZE = 50;
 
 export function createEventsState(api: DashboardApi) {
@@ -62,7 +61,7 @@ export function createEventsState(api: DashboardApi) {
   );
   watch(refreshToken, () => void load(0));
 
-  function startPolling(intervalMs = DEFAULT_POLL_MS): void {
+  function startPolling(intervalMs = POLL_INTERVAL_MS): void {
     stopPolling();
     void load(0);
     timer = window.setInterval(() => {
