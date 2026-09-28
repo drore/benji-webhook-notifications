@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 import { ApiError, createDashboardApi } from "./api/client";
 import AppHeader from "./components/AppHeader.vue";
@@ -47,27 +47,71 @@ function positionOf(key: PanelKey): number {
   return layout.value[columnOf(key)].indexOf(key);
 }
 
+/**
+ * Panels are reordered with CSS `order`, so a swap would otherwise jump. FLIP:
+ * measure before, mutate, measure after, then animate each slot from its old
+ * position to its new one.
+ */
+async function withFlip(mutate: () => void): Promise<void> {
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const before = new Map<string, DOMRect>();
+  document.querySelectorAll<HTMLElement>("[data-panel-key]").forEach((slot) => {
+    before.set(slot.dataset.panelKey ?? "", slot.getBoundingClientRect());
+  });
+
+  mutate();
+  await nextTick();
+  if (reduceMotion) return;
+
+  document.querySelectorAll<HTMLElement>("[data-panel-key]").forEach((slot) => {
+    const first = before.get(slot.dataset.panelKey ?? "");
+    if (!first) return;
+    const last = slot.getBoundingClientRect();
+    const delta = first.top - last.top;
+    if (Math.abs(delta) < 1) return;
+    slot.style.transition = "none";
+    slot.style.transform = `translateY(${delta}px)`;
+    void slot.offsetHeight; // flush the starting position before animating
+    requestAnimationFrame(() => {
+      slot.style.transition = "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+      slot.style.transform = "";
+    });
+  });
+}
+
 function movePanelTo(key: PanelKey, target: PanelKey): void {
   if (key === target) return;
   const from = columnOf(key);
   const to = columnOf(target);
   if (from === to) {
-    layout.value[from] = movePanel(layout.value[from], key, target);
+    const nextOrder = movePanel(layout.value[from], key, target);
+    if (nextOrder === layout.value[from]) return;
+    void withFlip(() => {
+      layout.value[from] = nextOrder;
+    });
     return;
   }
-  layout.value[from] = layout.value[from].filter((item) => item !== key);
-  const targetColumn = [...layout.value[to]];
-  targetColumn.splice(targetColumn.indexOf(target), 0, key);
-  layout.value[to] = targetColumn;
+  void withFlip(() => {
+    layout.value[from] = layout.value[from].filter((item) => item !== key);
+    const targetColumn = [...layout.value[to]];
+    targetColumn.splice(targetColumn.indexOf(target), 0, key);
+    layout.value[to] = targetColumn;
+  });
 }
 
 function resetLayout(): void {
-  layout.value = structuredClone(DEFAULT_LAYOUT);
+  void withFlip(() => {
+    layout.value = structuredClone(DEFAULT_LAYOUT);
+  });
 }
 
 function shiftPanelBy(key: PanelKey, delta: number): void {
   const column = columnOf(key);
-  layout.value[column] = shiftPanel(layout.value[column], key, delta);
+  const nextOrder = shiftPanel(layout.value[column], key, delta);
+  if (nextOrder === layout.value[column]) return;
+  void withFlip(() => {
+    layout.value[column] = nextOrder;
+  });
 }
 
 watch([selectedEventId, selectedDeliveryId], ([eventId, deliveryId]) => {

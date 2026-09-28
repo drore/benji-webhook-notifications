@@ -536,11 +536,27 @@ test.describe("reviewer journey", () => {
     expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
 
     const grip = page.locator('[data-panel-key="events"] .panel-grip');
+    await expect(grip).toHaveCSS("touch-action", "none");
     await grip.hover();
     await page.mouse.down();
     const journeyBox = await page.locator('[data-panel-key="journey"]').boundingBox();
     await page.mouse.move(journeyBox!.x + journeyBox!.width / 2, journeyBox!.y + 40, { steps: 8 });
+
+    // Mid-drag the panel lifts and the pointer reads as grabbing.
+    await expect(page.locator('[data-panel-key="events"]')).toHaveClass(/dragging/);
+    expect(await page.evaluate(() => document.body.style.cursor)).toBe("grabbing");
+
     await page.mouse.up();
+    await expect(page.locator('[data-panel-key="events"]')).not.toHaveClass(/dragging/);
+    expect(await page.evaluate(() => document.body.style.cursor)).toBe("");
+    // The FLIP animation settles without leaving a transform behind.
+    await expect
+      .poll(async () =>
+        page
+          .locator('[data-panel-key="events"]')
+          .evaluate((node) => (node as HTMLElement).style.transform),
+      )
+      .toBe("");
 
     const reordered = await visualOrder();
     expect(reordered.indexOf("events")).toBeLessThan(reordered.indexOf("journey"));

@@ -417,10 +417,15 @@ button.signal-pill:hover {
 
 .panel-slot {
   position: relative;
+  will-change: transform;
 }
 
 .panel-slot.dragging {
-  opacity: 0.65;
+  z-index: 3;
+  border-radius: var(--radius);
+  box-shadow: 0 18px 40px -18px rgba(7, 20, 55, 0.55);
+  transform: scale(1.012);
+  transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
 .panel-grip {
@@ -438,6 +443,7 @@ button.signal-pill:hover {
   line-height: 1;
   box-shadow: var(--shadow);
   cursor: grab;
+  touch-action: none;
   opacity: 0.9;
   z-index: 2;
 }
@@ -455,6 +461,16 @@ button.signal-pill:hover {
 
 .panel-slot.dragging .panel-grip {
   cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-slot {
+    will-change: auto;
+  }
+  .panel-slot.dragging {
+    transform: none;
+    transition: none;
+  }
 }
 
 .column {

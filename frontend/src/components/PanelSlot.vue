@@ -9,35 +9,49 @@ const emit = defineEmits<{
 
 const dragging = ref(false);
 let lastMoveAt = { x: 0, y: 0 };
+// Re-armed only once the pointer is over the dragged panel again, so the extra
+// moves that follow a swap cannot immediately trade the panels back.
+let armed = false;
+const slot = ref<HTMLElement | null>(null);
 
 function slotUnderPointer(event: PointerEvent): string | null {
-  for (const slot of document.querySelectorAll<HTMLElement>("[data-panel-key]")) {
-    const rect = slot.getBoundingClientRect();
+  // Layout offsets, not getBoundingClientRect: the FLIP animation transforms the
+  // slots, and a mid-flight rect would make the drop target jump around.
+  for (const candidate of document.querySelectorAll<HTMLElement>("[data-panel-key]")) {
+    const container = (candidate.offsetParent as HTMLElement | null) ?? document.body;
+    const base = container.getBoundingClientRect();
+    const left = base.left + candidate.offsetLeft;
+    const top = base.top + candidate.offsetTop;
     const inside =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom;
-    if (inside) return slot.dataset.panelKey ?? null;
+      event.clientX >= left &&
+      event.clientX <= left + candidate.offsetWidth &&
+      event.clientY >= top &&
+      event.clientY <= top + candidate.offsetHeight;
+    if (inside) return candidate.dataset.panelKey ?? null;
   }
   return null;
 }
 
 function onPointerMove(event: PointerEvent): void {
   if (!dragging.value) return;
-  // Small dead zone: after a swap the panel moves under the pointer, and without
-  // this the rows would trade places on every pixel of movement.
+  // A few pixels of slack keeps a resting hand from reordering by accident.
   const travelled = Math.hypot(event.clientX - lastMoveAt.x, event.clientY - lastMoveAt.y);
-  if (travelled < 12) return;
+  if (travelled < 6) return;
   const target = slotUnderPointer(event);
-  if (target && target !== props.panelKey) {
-    lastMoveAt = { x: event.clientX, y: event.clientY };
-    emit("move", { key: props.panelKey, target });
+  if (target === props.panelKey) {
+    armed = true;
+    return;
   }
+  if (!armed || !target) return;
+  armed = false;
+  lastMoveAt = { x: event.clientX, y: event.clientY };
+  emit("move", { key: props.panelKey, target });
 }
 
 function stopDragging(): void {
   dragging.value = false;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
   window.removeEventListener("pointermove", onPointerMove);
 }
 
@@ -45,6 +59,9 @@ function startDragging(event: PointerEvent): void {
   event.preventDefault();
   dragging.value = true;
   lastMoveAt = { x: event.clientX, y: event.clientY };
+  armed = true; // the pointer starts on this panel's handle
+  document.body.style.cursor = "grabbing";
+  document.body.style.userSelect = "none";
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", stopDragging, { once: true });
 }
@@ -59,7 +76,7 @@ onUnmounted(stopDragging);
 </script>
 
 <template>
-  <div class="panel-slot" :class="{ dragging }" :data-panel-key="panelKey">
+  <div ref="slot" class="panel-slot" :class="{ dragging }" :data-panel-key="panelKey">
     <button
       type="button"
       class="panel-grip"
