@@ -12,6 +12,11 @@ const {
   submitting,
   outcome,
   matchCount,
+  eventTypes,
+  enforceSchema,
+  loadEventTypes,
+  schemaFor,
+  setEnforceSchema,
   refreshMatches,
   updateKey,
   submit,
@@ -27,6 +32,51 @@ const BENJI_TYPES = [
   { value: "member_account_linked", label: "member_account_linked — member account linked" },
   { value: "custom", label: "Custom event type…" },
 ];
+
+// The registry describes the types that carry a payload contract. Built-in demo
+// presets that have no schema yet stay selectable, and a fallback list keeps the
+// composer usable when the registry cannot be read at all.
+const typeOptions = computed(() => {
+  const registered = new Set(eventTypes.value.map((item) => item.name));
+  const presets = BENJI_TYPES.filter(
+    (option) => option.value === "custom" || !registered.has(option.value),
+  );
+  if (!eventTypes.value.length) return presets;
+  return [
+    ...eventTypes.value.map((item) => ({
+      value: item.name,
+      label: `${item.name} — ${item.description}`,
+    })),
+    ...presets,
+  ];
+});
+
+const effectiveSchema = computed(() => schemaFor(effectiveType.value));
+
+const expectedShape = computed(() => {
+  const schema = effectiveSchema.value?.schema;
+  if (!schema?.properties) return "";
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties)
+    .map(
+      ([name, definition]) =>
+        `${name} (${definition.type ?? "any"}${required.has(name) ? "" : ", optional"})`,
+    )
+    .join(", ");
+});
+
+const registeredNames = computed(
+  () => eventTypes.value.map((item) => item.name).join(", ") || "none registered",
+);
+
+const enforceDisabledReason = computed(() =>
+  effectiveSchema.value
+    ? ""
+    : `Schema enforcement is off for ${effectiveType.value || "this type"} — no payload schema`
+      + " is registered for this event type yet. Pick a type that has a schema"
+      + ` (${registeredNames.value}) or ask your Benji contact to add one for this type.`,
+);
+
 const customType = ref("");
 
 const effectiveType = computed(() =>
@@ -38,6 +88,7 @@ let timer: number | null = null;
 watch(effectiveType, (type) => void refreshMatches(type), { immediate: true });
 
 onMounted(() => {
+  void loadEventTypes();
   timer = window.setInterval(() => {
     if (!document.hidden) void refreshMatches(effectiveType.value);
   }, 2000);
@@ -65,7 +116,7 @@ function submitEvent(): void {
       <label>
         Event type
         <select v-model="eventType" aria-label="Event type" :disabled="submitting">
-          <option v-for="option in BENJI_TYPES" :key="option.value" :value="option.value">
+          <option v-for="option in typeOptions" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
         </select>
@@ -84,6 +135,45 @@ function submitEvent(): void {
           :disabled="submitting"
         />
       </label>
+      <div class="schema-row" :class="{ 'is-disabled': !effectiveSchema }">
+        <label class="switch" :class="{ 'is-disabled': !effectiveSchema }" :title="enforceDisabledReason">
+          <input
+            type="checkbox"
+            data-testid="enforce-schema"
+            :checked="enforceSchema"
+            :disabled="submitting || !effectiveSchema"
+            @change="setEnforceSchema(($event.target as HTMLInputElement).checked)"
+          />
+          Enforce schema
+        </label>
+        <span v-if="!effectiveSchema && effectiveType" class="attempt-help schema-help">
+          <button
+            type="button"
+            class="attempt-help-trigger"
+            aria-label="Why is schema enforcement disabled?"
+            data-testid="enforce-schema-help"
+          >
+            ?
+          </button>
+          <span class="tip" role="tooltip" data-testid="enforce-schema-tip">
+            <strong>Schema enforcement is off for this type</strong>
+            <span>
+              No payload schema is registered for <code>{{ effectiveType }}</code> yet, so there is
+              nothing to check — the event is still published.
+            </span>
+            <em>
+              Pick a type that has a schema ({{ registeredNames }}) or ask your Benji contact to
+              add one for this type.
+            </em>
+          </span>
+        </span>
+        <span v-if="expectedShape" class="side-note" data-testid="expected-shape">
+          expected: {{ expectedShape }}
+        </span>
+        <span v-else-if="effectiveType" class="side-note" data-testid="no-schema">
+          no schema registered for this type yet
+        </span>
+      </div>
       <label>
         Submission key
         <input

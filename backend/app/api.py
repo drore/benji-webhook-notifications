@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import store
+from . import event_schemas, store
 from .config import Settings, get_settings
 from .db import connect, init_schema
 from .models import ApiError, EndpointCreate, EventSubmit
@@ -189,13 +189,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/events")
     def submit_event(payload: EventSubmit, response: Response, conn=Depends(get_conn)):
         acceptance = store.accept_event(
-            conn, payload.idempotency_key, payload.type, payload.payload
+            conn,
+            payload.idempotency_key,
+            payload.type,
+            payload.payload,
+            enforce_schema=payload.enforce_schema,
         )
         response.status_code = 201 if acceptance.status == "created" else 200
         return {
             "event_id": acceptance.event_id,
             "deduplicated": acceptance.status == "deduplicated",
         }
+
+    @app.get("/api/event-types")
+    def list_event_types():
+        return {"items": event_schemas.registered_types()}
 
     @app.get("/api/events")
     def list_events(

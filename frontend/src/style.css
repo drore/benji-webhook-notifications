@@ -202,6 +202,43 @@ button.signal-pill:hover {
   margin: 4px 0 6px;
 }
 
+.schema-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.switch.is-disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+/* Hovering the disabled switch row must explain why, not stay silent. The row
+   (not the disabled control) is the hover target: disabled controls do not
+   propagate hover to their label in every browser. */
+.schema-row.is-disabled:hover .schema-help .tip,
+.schema-row.is-disabled:focus-within .schema-help .tip,
+.switch.is-disabled:hover + .schema-help .tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.switch input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--purple);
+}
+
 .signal-pill strong {
   font-variant-numeric: tabular-nums;
 }

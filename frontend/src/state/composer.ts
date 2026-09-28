@@ -1,7 +1,7 @@
 import { ref } from "vue";
 
 import { ApiError } from "../api/client";
-import type { DashboardApi } from "../api/client";
+import type { DashboardApi, EventTypeInfo } from "../api/client";
 
 export type ComposerOutcome =
   | { kind: "accepted"; eventId: string }
@@ -22,6 +22,24 @@ export function createComposerState(api: DashboardApi) {
   const submitting = ref(false);
   const outcome = ref<ComposerOutcome | null>(null);
   const matchCount = ref<number | null>(null);
+  const eventTypes = ref<EventTypeInfo[]>([]);
+  const enforceSchema = ref(true);
+
+  async function loadEventTypes(): Promise<void> {
+    try {
+      eventTypes.value = (await api.listEventTypes()).items;
+    } catch {
+      eventTypes.value = [];
+    }
+  }
+
+  function schemaFor(type: string): EventTypeInfo | null {
+    return eventTypes.value.find((item) => item.name === type) ?? null;
+  }
+
+  function setEnforceSchema(value: boolean): void {
+    enforceSchema.value = value;
+  }
 
   async function refreshMatches(type: string): Promise<void> {
     if (!type) {
@@ -55,6 +73,7 @@ export function createComposerState(api: DashboardApi) {
         idempotency_key: submissionKey.value,
         type: targetType,
         payload,
+        enforce_schema: enforceSchema.value && schemaFor(targetType) !== null,
       });
       outcome.value = result.deduplicated
         ? { kind: "deduplicated", eventId: result.event_id }
@@ -100,6 +119,11 @@ export function createComposerState(api: DashboardApi) {
     submitting,
     outcome,
     matchCount,
+    eventTypes,
+    enforceSchema,
+    loadEventTypes,
+    schemaFor,
+    setEnforceSchema,
     refreshMatches,
     updateKey,
     submit,

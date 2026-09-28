@@ -4,6 +4,7 @@ import sqlite3
 import time
 from dataclasses import dataclass, field
 
+from . import event_schemas
 from .db import transaction
 from .models import (
     ApiError,
@@ -262,7 +263,13 @@ def list_events(
     return EventPage(items=summaries, total=total)
 
 
-def accept_event(conn, idempotency_key: str, event_type: str, payload: object) -> Acceptance:
+def accept_event(
+    conn,
+    idempotency_key: str,
+    event_type: str,
+    payload: object,
+    enforce_schema: bool = False,
+) -> Acceptance:
     validate_idempotency_key(idempotency_key)
     validate_event_type(event_type)
     if not isinstance(payload, (dict, list)):
@@ -277,6 +284,8 @@ def accept_event(conn, idempotency_key: str, event_type: str, payload: object) -
         ) from exc
     if len(canonical.encode("utf-8")) > MAX_PAYLOAD_BYTES:
         raise ApiError("validation_error", "Payload exceeds the 32 KiB limit.")
+    if enforce_schema:
+        event_schemas.validate_payload(event_type, payload)
     now = time.time()
     with transaction(conn):
         existing = conn.execute(

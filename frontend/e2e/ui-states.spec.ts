@@ -35,6 +35,7 @@ test.describe("async UI states", () => {
     });
     await page.goto("/");
     const button = page.getByRole("button", { name: "Publish event" });
+    await page.getByLabel("Payload").fill('{"member":"m_pending","points":1}');
     await button.click();
     await expect(button).toBeDisabled();
     release?.();

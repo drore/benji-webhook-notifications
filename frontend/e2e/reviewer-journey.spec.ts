@@ -222,7 +222,7 @@ test.describe("reviewer journey", () => {
 
     await publishEvent(page, {
       type: "reward_transaction_created",
-      payload: `{"n":1,"suffix":"${suffix}"}`,
+      payload: `{"member":"m_deep_${suffix}","points":1}`,
     });
     const firstEvent = await acceptedEventId(page);
     expect(firstEvent).toBeTruthy();
@@ -233,7 +233,7 @@ test.describe("reviewer journey", () => {
 
     await publishEvent(page, {
       type: "reward_transaction_created",
-      payload: `{"n":2,"suffix":"${suffix}"}`,
+      payload: `{"member":"m_deep_${suffix}","points":2}`,
     });
     const secondEvent = await acceptedEventId(page);
     expect(secondEvent).toBeTruthy();
@@ -265,7 +265,7 @@ test.describe("reviewer journey", () => {
 
     await publishEvent(page, {
       type: "reward_transaction_created",
-      payload: `{"n":1,"suffix":"${suffix}"}`,
+      payload: `{"member":"m_switch_${suffix}","points":1}`,
     });
     const firstEvent = (await acceptedEventId(page)) as string;
     await selectEventById(page, firstEvent);
@@ -283,7 +283,7 @@ test.describe("reviewer journey", () => {
     // A new event does not steal the view; the lookup jumps to it by ID.
     await publishEvent(page, {
       type: "reward_transaction_created",
-      payload: `{"n":2,"suffix":"${suffix}"}`,
+      payload: `{"member":"m_switch_${suffix}","points":2}`,
     });
     const secondEvent = (await acceptedEventId(page)) as string;
     await page.getByLabel("Find by ID").fill(secondEvent);
@@ -314,7 +314,7 @@ test.describe("reviewer journey", () => {
 
     await publishEvent(page, {
       type: "reward_transaction_created",
-      payload: `{"n":1,"suffix":"${suffix}"}`,
+      payload: `{"member":"m_filter_${suffix}","points":1}`,
     });
     const failedEvent = (await acceptedEventId(page)) as string;
     // Wait for this event's own delivery to exhaust its cycle; earlier tests
@@ -343,5 +343,43 @@ test.describe("reviewer journey", () => {
     await page.getByRole("button", { name: "Clear", exact: true }).click();
     await expect(page.getByTestId("event-row").filter({ hasText: failedEvent })).toBeVisible();
     await expect(page.getByTestId("event-row").filter({ hasText: unmatchedEvent })).toBeVisible();
+  });
+
+  test("REQ-007 schema enforcement rejects a bad payload and yields to the switch", async ({
+    page,
+    request,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Schema ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: ["reward_transaction_created"] });
+    await configureReceiver(request, secret, "success");
+    await enableEndpoint(page, name);
+
+    // Registered types are enforced by default, with the expected shape on screen.
+    await expect(page.getByTestId("enforce-schema")).toBeChecked();
+    await expect(page.getByTestId("expected-shape")).toContainText("points (integer)");
+
+    await page.getByLabel("Payload").fill('{"member":"","points":-1}');
+    await page.getByRole("button", { name: "Publish event" }).click();
+    await expect(page.getByText(/does not match the registered schema/i)).toBeVisible();
+    await expect(page.getByTestId("accepted")).toHaveCount(0);
+
+    // The rejected attempt must not consume the submission key: switching
+    // enforcement off publishes the same payload with the same key.
+    await page.getByTestId("enforce-schema").uncheck();
+    await page.getByRole("button", { name: "Publish event" }).click();
+    await expect(page.getByTestId("accepted")).toBeVisible();
+    const eventId = (await acceptedEventId(page)) as string;
+    expect(eventId).toMatch(/^evt_/);
+
+    // A type without a schema disables the switch and explains itself on hover.
+    await page.getByLabel("Event type", { exact: true }).selectOption("custom");
+    await page.getByLabel("Custom event type").fill(`e2e_schema_${suffix}`);
+    await expect(page.getByTestId("enforce-schema")).toBeDisabled();
+    await page.locator(".switch.is-disabled").hover();
+    await expect(page.getByTestId("enforce-schema-tip")).toBeVisible();
+    await expect(page.getByTestId("enforce-schema-tip")).toContainText("ask your Benji contact");
+    await expect(page.getByTestId("enforce-schema-tip")).not.toContainText(".py");
   });
 });

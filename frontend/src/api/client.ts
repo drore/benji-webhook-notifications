@@ -91,6 +91,16 @@ export interface SubmitInput {
   idempotency_key: string;
   type: string;
   payload: unknown;
+  enforce_schema?: boolean;
+}
+
+export interface EventTypeInfo {
+  name: string;
+  description: string;
+  schema: {
+    properties?: Record<string, { type?: string }>;
+    required?: string[];
+  };
 }
 
 export interface SubmitResult {
@@ -180,6 +190,7 @@ export function createDashboardApi(base = "/api") {
       request<Endpoint>(`/endpoints/${id}/${enabled ? "enable" : "disable"}`, { method: "POST" }),
     submitEvent: (input: SubmitInput) =>
       request<SubmitResult>("/events", { method: "POST", body: JSON.stringify(input) }),
+    listEventTypes: () => request<{ items: EventTypeInfo[] }>("/event-types"),
     replayDelivery: (id: string) =>
       request<{ delivery_id: string; status: string }>(`/deliveries/${id}/replay`, {
         method: "POST",

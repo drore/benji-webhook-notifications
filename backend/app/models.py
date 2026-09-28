@@ -28,6 +28,7 @@ class EventSubmit(BaseModel):
     idempotency_key: str
     type: str
     payload: object
+    enforce_schema: bool = False
 
 
 def canonical_json(value: object) -> str:

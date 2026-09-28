@@ -56,7 +56,7 @@ Open the dashboard at http://127.0.0.1:5173/, the receiver at http://127.0.0.1:9
 
 1. **Create endpoints.** In the Endpoints panel, create `Partner CRM` subscribing to `reward_transaction_created` and `member_account_linked`; create `Rewards ledger` subscribing to `reward_transaction_created`. You only name the destination and pick event types — the receiver URL is generated automatically and each creation shows its signing secret **once**: copy it now. Each unacknowledged secret stays on screen until you dismiss it, so creating the next endpoint cannot swallow the previous one.
 2. **Connect the secrets.** On the receiver page, paste each one-time secret, choose a response behavior (**Always succeed**, **Fail once, then succeed**, or **Always fail**), and save. Then click **Enable** on each endpoint in the dashboard (new endpoints start disabled). The receiver API also accepts scripted behaviors (`slow`, `slow_fail`, `redirect`, `fail_count:<n>`) used by the automated tests.
-3. **Publish an event.** In "Publish test event", keep `reward_transaction_created`, use payload `{"member": "m_1", "points": 10}`, and submit. The event appears in Recent events; select it to see one endpoint node per matching delivery on the journey canvas, with live status pills and animated edges while an attempt is active.
+3. **Publish an event.** In "Publish test event", keep `reward_transaction_created`, use payload `{"member": "m_1", "points": 10}`, and submit. The event appears in Recent events; select it to see one endpoint node per matching delivery on the journey canvas, with live status pills and animated edges while an attempt is active. The **Enforce schema** switch is on by default for event types that have a registered schema — turn it off to publish an unconventional payload, and hover it when it is disabled to see why.
 4. **Watch delivery.** Nodes update without manual refresh. Click an endpoint node to inspect the endpoint URL, state, due time, payload, and the attempt timeline with bounded response excerpts. The receiver page shows each verified request; a `fail_once` path fails attempt 1 and succeeds on the retry (2s later with defaults).
 
    The selected event and delivery stay in the URL (`?event=evt_…&delivery=dlv_…`), so a view survives a reload and can be shared, and the **Find by ID** box in the header jumps straight to any `evt_…` or `dlv_…` id you paste from a log.
@@ -71,6 +71,16 @@ python3 scripts/seed_demo.py
 ```
 
 It creates both endpoints, connects their secrets to the receiver (`success` and `fail_once`), and publishes one shared event. It does not reset existing data.
+
+### Event types and payload schemas
+
+Event types are open: any name matching `[A-Za-z0-9_.-]{1,64}` can be published and subscribed to, and the composer's type list plus the **Find by ID**/filter facets pick new types up automatically. A type becomes stricter only when a payload schema is registered for it:
+
+- `GET /api/event-types` lists the registered types with a generated JSON Schema; the composer's dropdown and its "expected: …" hint read from it.
+- Registered today: `reward_transaction_created` (`member: string`, `points: integer ≥ 0`) and `member_account_linked` (`member: string`); extra fields are rejected.
+- Enforcement is per submission: the dashboard sends `enforce_schema: true` when the switch is on, and `POST /api/events` defaults the flag to `false`, so existing API clients and unregistered types keep today's structural checks (JSON object or array, 32 KiB, nesting depth).
+- A rejected payload returns `400 validation_error` with field paths only — no values, no event, and the submission key is not consumed.
+- To add a contract, add a pydantic model and a registry entry in `backend/app/event_schemas.py`; the type then appears in the dashboard with its expected shape.
 
 ## Tests
 
