@@ -22,7 +22,7 @@ describe("polling and staleness", () => {
         failing
           ? Promise.reject(new ApiError("transport_error", "down", null))
           : { failed_count: 0, retrying_count: 0, earliest_due_at: null, latest_event: null },
-      listEvents: async () => ({ items: [] }),
+      listEvents: async () => ({ items: [], total: 0 }),
     });
     const overview = createOverviewState(api);
     overview.startPolling(2000);
@@ -70,6 +70,7 @@ describe("polling and staleness", () => {
             },
           },
         ],
+        total: 1,
       }),
     });
     const wrapper = mount(EventsList, { props: { api, selectedEventId: null } });
@@ -98,6 +99,7 @@ describe("polling and staleness", () => {
             },
           },
         ],
+        total: 1,
       }),
     });
     const wrapper = mount(EventsList, { props: { api, selectedEventId: null } });

@@ -135,3 +135,45 @@ def test_disabled_endpoint_excluded_from_new_fan_out(client):
         == 201
     )
     assert client.get("/api/events?limit=1").json()["items"][0]["deliveries"]["pending"] == 0
+
+
+def test_list_events_filters_by_type_status_and_endpoint_with_pagination(client):
+    endpoint = client.post(
+        "/api/endpoints",
+        json={"name": "crm", "url": "http://127.0.0.1:9000/webhooks/crm", "event_types": ["a"]},
+    ).json()["endpoint"]
+    client.post(f"/api/endpoints/{endpoint['id']}/enable")
+    first = client.post(
+        "/api/events", json={"idempotency_key": "k1", "type": "a", "payload": {}}
+    ).json()["event_id"]
+    unmatched = client.post(
+        "/api/events", json={"idempotency_key": "k2", "type": "b", "payload": {}}
+    ).json()["event_id"]
+    second = client.post(
+        "/api/events", json={"idempotency_key": "k3", "type": "a", "payload": {}}
+    ).json()["event_id"]
+
+    by_type = client.get("/api/events?type=a").json()
+    assert by_type["total"] == 2
+    assert {item["id"] for item in by_type["items"]} == {first, second}
+
+    by_endpoint = client.get(f"/api/events?endpoint_id={endpoint['id']}").json()
+    assert by_endpoint["total"] == 2
+
+    assert client.get("/api/events?status=pending").json()["total"] == 2
+    no_receivers = client.get("/api/events?status=no_receivers").json()
+    assert no_receivers["total"] == 1
+    assert [item["id"] for item in no_receivers["items"]] == [unmatched]
+
+    page_one = client.get("/api/events?limit=2").json()
+    page_two = client.get("/api/events?limit=2&offset=2").json()
+    assert page_one["total"] == 3 and page_two["total"] == 3
+    assert len(page_one["items"]) == 2 and len(page_two["items"]) == 1
+    paged_ids = [item["id"] for item in page_one["items"]] + [
+        item["id"] for item in page_two["items"]
+    ]
+    assert sorted(paged_ids) == sorted([first, unmatched, second])
+
+    bogus = client.get("/api/events?status=bogus")
+    assert bogus.status_code == 400 and bogus.json()["code"] == "validation_error"
+    assert client.get("/api/events?offset=-1").status_code == 400

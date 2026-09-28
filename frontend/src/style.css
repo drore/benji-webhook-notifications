@@ -149,6 +149,59 @@ body {
   box-shadow: var(--shadow);
 }
 
+button.signal-pill {
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+}
+
+button.signal-pill:hover {
+  border-color: var(--border-strong);
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.filter-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--navy-soft);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  border-color: var(--purple);
+  background: var(--purple-soft);
+  color: var(--purple-strong);
+  font-weight: 600;
+}
+
+.filter-bar select {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--navy);
+  max-width: 190px;
+}
+
+.event-count {
+  font-size: 12px;
+  margin: 4px 0 6px;
+}
+
 .signal-pill strong {
   font-variant-numeric: tabular-nums;
 }

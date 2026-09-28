@@ -1,20 +1,49 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 
-import type { DashboardApi } from "../api/client";
+import type { DashboardApi, Endpoint } from "../api/client";
+import {
+  STATUS_CHIPS,
+  eventFilters,
+  hasActiveFilter,
+  resetEventFilters,
+  setEndpointFilter,
+  setStatusFilter,
+  setTypeFilter,
+} from "../state/filters";
 import { createEventsState } from "../state/events";
 
 const props = defineProps<{ api: DashboardApi; selectedEventId: string | null }>();
 const emit = defineEmits<{ select: [eventId: string] }>();
-const { events, loading, stale, error, load, startPolling, stopPolling } = createEventsState(
-  props.api,
-);
+const { events, total, loading, loadingMore, stale, error, load, loadMore, startPolling, stopPolling } =
+  createEventsState(props.api);
+
+const endpoints = ref<Endpoint[]>([]);
 
 onMounted(async () => {
   await load();
   startPolling();
+  try {
+    endpoints.value = (await props.api.listEndpoints()).items;
+  } catch {
+    // The endpoint facet is optional tooling; the list still works without it.
+  }
 });
 onUnmounted(() => stopPolling());
+
+const types = computed(() => {
+  const seen = new Set(events.value.map((event) => event.type));
+  if (eventFilters.type) seen.add(eventFilters.type);
+  return [...seen].sort();
+});
+
+function onTypeChange(event: Event): void {
+  setTypeFilter((event.target as HTMLSelectElement).value);
+}
+
+function onEndpointChange(event: Event): void {
+  setEndpointFilter((event.target as HTMLSelectElement).value);
+}
 
 function age(createdAt: string): string {
   const seconds = Math.max(0, Math.round((Date.now() - new Date(createdAt).getTime()) / 1000));
@@ -31,13 +60,58 @@ function age(createdAt: string): string {
       <span class="muted" style="font-size: 12px">updates live every 2s</span>
     </div>
     <p class="card-hint">Select an event to follow its journey above.</p>
+    <div class="filter-bar">
+      <button
+        v-for="chip in STATUS_CHIPS"
+        :key="chip.value"
+        type="button"
+        class="filter-chip"
+        :class="{ active: eventFilters.status === chip.value }"
+        :data-action="`filter-${chip.value}`"
+        @click="setStatusFilter(chip.value)"
+      >
+        {{ chip.label }}
+      </button>
+      <select aria-label="Filter by type" :value="eventFilters.type" @change="onTypeChange">
+        <option value="">All types</option>
+        <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
+      </select>
+      <select
+        aria-label="Filter by endpoint"
+        :value="eventFilters.endpointId"
+        @change="onEndpointChange"
+      >
+        <option value="">All endpoints</option>
+        <option v-for="endpoint in endpoints" :key="endpoint.id" :value="endpoint.id">
+          {{ endpoint.name }}
+        </option>
+      </select>
+      <button
+        v-if="hasActiveFilter()"
+        type="button"
+        class="btn btn-small"
+        data-action="clear-filters"
+        @click="resetEventFilters()"
+      >
+        Clear
+      </button>
+    </div>
     <p v-if="stale" class="banner banner-warn">Event status may be stale.</p>
     <p v-if="error" class="banner banner-error">{{ error }}</p>
     <p v-if="loading && !events.length" class="muted">Loading events…</p>
     <div v-else-if="!events.length" class="empty-state">
-      No events yet — publish one on the right to see it fan out.
+      <template v-if="hasActiveFilter()">
+        No events match the current filter.
+        <button type="button" class="btn btn-small" data-action="clear-filters" @click="resetEventFilters()">
+          Clear filter
+        </button>
+      </template>
+      <template v-else>No events yet — publish one on the right to see it fan out.</template>
     </div>
-    <ul v-else class="event-list">
+    <p v-if="events.length" class="event-count muted" data-testid="event-count">
+      showing {{ events.length }} of {{ total }}
+    </p>
+    <ul v-if="events.length" class="event-list">
       <li
         v-for="event in events"
         :key="event.id"
@@ -85,5 +159,15 @@ function age(createdAt: string): string {
         </span>
       </li>
     </ul>
+    <button
+      v-if="events.length && events.length < total"
+      type="button"
+      class="btn btn-small"
+      data-action="load-more"
+      :disabled="loadingMore"
+      @click="loadMore"
+    >
+      {{ loadingMore ? "Loading…" : `Load more (${total - events.length} more)` }}
+    </button>
   </section>
 </template>

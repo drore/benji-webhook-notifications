@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted } from "vue";
 
 import type { DashboardApi } from "../api/client";
+import { setStatusFilter } from "../state/filters";
 import { createOverviewState } from "../state/overview";
 
 const props = defineProps<{ api: DashboardApi }>();
@@ -22,20 +23,30 @@ function formatDue(value: string | null | undefined): string {
 
 <template>
   <div class="signals">
-    <span
+    <button
+      type="button"
       class="signal-pill"
       :class="overview?.failed_count ? 'signal-danger' : 'signal-neutral'"
+      data-testid="failed-signal"
+      title="Show failed events"
+      @click="setStatusFilter('failed')"
     >
       <span class="signal-dot" aria-hidden="true"></span>
       Needs attention
       <strong data-testid="failed-count">{{ overview?.failed_count ?? 0 }}</strong>
-    </span>
-    <span class="signal-pill signal-warn">
+    </button>
+    <button
+      type="button"
+      class="signal-pill signal-warn"
+      data-testid="retrying-signal"
+      title="Show retrying events"
+      @click="setStatusFilter('retrying')"
+    >
       <span class="signal-dot" aria-hidden="true"></span>
       Retrying
       <strong data-testid="retrying-count">{{ overview?.retrying_count ?? 0 }}</strong>
       <small v-if="overview?.earliest_due_at">next {{ formatDue(overview.earliest_due_at) }}</small>
-    </span>
+    </button>
     <span v-if="overview?.latest_event" class="signal-pill signal-neutral">
       Latest <code>{{ overview.latest_event.type }}</code>
     </span>

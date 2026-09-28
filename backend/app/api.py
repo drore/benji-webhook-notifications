@@ -17,6 +17,7 @@ from .policy import PolicyError
 from .worker import DeliveryWorker
 
 _NOT_FOUND_CODE = "not_found"
+_VALIDATION_CODE = "validation_error"
 
 
 def _error_response(code: str, message: str, status_code: int) -> JSONResponse:
@@ -194,8 +195,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
 
     @app.get("/api/events")
-    def list_events(limit: int = 50, conn=Depends(get_conn)):
+    def list_events(
+        limit: int = 50,
+        offset: int = 0,
+        status: str | None = None,
+        type: str | None = None,
+        endpoint_id: str | None = None,
+        conn=Depends(get_conn),
+    ):
         bounded = max(1, min(limit, 200))
+        if offset < 0:
+            raise ApiError(_VALIDATION_CODE, "offset must be zero or greater.", 400)
+        if status is not None and status not in (
+            store.EVENT_STATUS_FILTERS | {store.NO_RECEIVERS_FILTER}
+        ):
+            raise ApiError(_VALIDATION_CODE, "Unknown event status filter.", 400)
+        page = store.list_events(
+            conn,
+            bounded,
+            offset=offset,
+            status=status,
+            event_type=type,
+            endpoint_id=endpoint_id,
+        )
         return {
             "items": [
                 {
@@ -204,8 +226,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "created_at": _iso(summary.created_at),
                     "deliveries": summary.deliveries,
                 }
-                for summary in store.list_events(conn, bounded)
-            ]
+                for summary in page.items
+            ],
+            "total": page.total,
         }
 
     @app.get("/api/events/{event_id}")

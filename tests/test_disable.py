@@ -47,8 +47,8 @@ def test_disable_pauses_pending_and_retrying_and_resume_restores_due_times(db_co
         " VALUES ('dlv_1','evt_1',?,'pending',?,0,NULL,?,?)",
         (ep.id, now, now, now),
     )
-    assert store.list_events(db_conn, 10)[0].deliveries["pending"] == 1
+    assert store.list_events(db_conn, 10).items[0].deliveries["pending"] == 1
     store.set_endpoint_enabled(db_conn, ep.id, False)
-    assert store.list_events(db_conn, 10)[0].deliveries["paused"] == 1
+    assert store.list_events(db_conn, 10).items[0].deliveries["paused"] == 1
     store.set_endpoint_enabled(db_conn, ep.id, True)
-    assert store.list_events(db_conn, 10)[0].deliveries["pending"] == 1
+    assert store.list_events(db_conn, 10).items[0].deliveries["pending"] == 1

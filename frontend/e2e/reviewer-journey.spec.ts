@@ -297,4 +297,35 @@ test.describe("reviewer journey", () => {
     await expect(page.getByTestId("event-node")).toContainText(secondEvent);
     await expect(page.getByTestId("delivery-id")).toHaveCount(0);
   });
+
+  test("REQ-009 the header signals and facets narrow the events list", async ({ page, request }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Filter ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: ["reward_transaction_created"] });
+    await configureReceiver(request, secret, "always_fail");
+    await enableEndpoint(page, name);
+
+    await publishEvent(page, {
+      type: "reward_transaction_created",
+      payload: `{"n":1,"suffix":"${suffix}"}`,
+    });
+    const failedEvent = (await acceptedEventId(page)) as string;
+    await publishEvent(page, { type: "campaign_updated", payload: `{"n":2,"suffix":"${suffix}"}` });
+    const unmatchedEvent = (await acceptedEventId(page)) as string;
+
+    await expect(page.getByTestId("failed-count")).not.toHaveText("0", { timeout: 20_000 });
+    await page.getByTestId("failed-signal").click();
+    await expect(page.getByTestId("event-row").filter({ hasText: failedEvent })).toBeVisible();
+    await expect(page.getByTestId("event-row").filter({ hasText: unmatchedEvent })).toHaveCount(0);
+    await expect(page.getByTestId("event-count")).toContainText("showing");
+
+    await page.getByRole("button", { name: "No receivers" }).click();
+    await expect(page.getByTestId("event-row").filter({ hasText: unmatchedEvent })).toBeVisible();
+    await expect(page.getByTestId("event-row").filter({ hasText: failedEvent })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(page.getByTestId("event-row").filter({ hasText: failedEvent })).toBeVisible();
+    await expect(page.getByTestId("event-row").filter({ hasText: unmatchedEvent })).toBeVisible();
+  });
 });

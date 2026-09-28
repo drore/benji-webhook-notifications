@@ -199,10 +199,53 @@ def set_endpoint_enabled(conn, endpoint_id: str, enabled: bool) -> EndpointRecor
     return get_endpoint(conn, endpoint_id)
 
 
-def list_events(conn, limit: int = 50) -> list[EventSummary]:
+EVENT_STATUS_FILTERS = frozenset(
+    {"pending", "in_progress", "retrying", "paused", "succeeded", "failed"}
+)
+NO_RECEIVERS_FILTER = "no_receivers"
+
+
+@dataclass
+class EventPage:
+    items: list[EventSummary]
+    total: int
+
+
+def _event_filter(event_type, endpoint_id, status) -> tuple[str, list]:
+    clauses: list[str] = []
+    params: list = []
+    if event_type is not None:
+        clauses.append("e.type = ?")
+        params.append(event_type)
+    if endpoint_id is not None:
+        clauses.append(
+            "EXISTS (SELECT 1 FROM deliveries d WHERE d.event_id = e.id AND d.endpoint_id = ?)"
+        )
+        params.append(endpoint_id)
+    if status == NO_RECEIVERS_FILTER:
+        clauses.append("NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.event_id = e.id)")
+    elif status is not None:
+        clauses.append(
+            "EXISTS (SELECT 1 FROM deliveries d WHERE d.event_id = e.id AND d.status = ?)"
+        )
+        params.append(status)
+    return (" WHERE " + " AND ".join(clauses) if clauses else "", params)
+
+
+def list_events(
+    conn,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    event_type: str | None = None,
+    endpoint_id: str | None = None,
+) -> EventPage:
+    where, params = _event_filter(event_type, endpoint_id, status)
+    total = conn.execute(f"SELECT COUNT(*) AS n FROM events e{where}", params).fetchone()["n"]
     rows = conn.execute(
-        "SELECT id, type, created_at FROM events ORDER BY created_at DESC, id DESC LIMIT ?",
-        (limit,),
+        f"SELECT e.id, e.type, e.created_at FROM events e{where}"
+        " ORDER BY e.created_at DESC, e.id DESC LIMIT ? OFFSET ?",
+        (*params, limit, offset),
     ).fetchall()
     summaries: list[EventSummary] = []
     for row in rows:
@@ -215,7 +258,7 @@ def list_events(conn, limit: int = 50) -> list[EventSummary]:
             if count_row["status"] in summary.deliveries:
                 summary.deliveries[count_row["status"]] = count_row["n"]
         summaries.append(summary)
-    return summaries
+    return EventPage(items=summaries, total=total)
 
 
 def accept_event(conn, idempotency_key: str, event_type: str, payload: object) -> Acceptance:

@@ -101,6 +101,19 @@ interface ListResponse<T> {
   items: T[];
 }
 
+export interface EventListParams {
+  limit?: number;
+  offset?: number;
+  status?: string;
+  type?: string;
+  endpoint_id?: string;
+}
+
+export interface EventListResponse {
+  items: EventSummary[];
+  total: number;
+}
+
 export class ApiError extends Error {
   code: string;
   httpStatus: number | null;
@@ -144,8 +157,16 @@ export function createDashboardApi(base = "/api") {
   return {
     getHealth: () => request<{ status: string }>("/health"),
     getOverview: () => request<Overview>("/overview"),
-    listEvents: (limit?: number) =>
-      request<ListResponse<EventSummary>>(`/events${limit ? `?limit=${limit}` : ""}`),
+    listEvents: (params: EventListParams = {}) => {
+      const query = new URLSearchParams();
+      if (params.limit) query.set("limit", String(params.limit));
+      if (params.offset) query.set("offset", String(params.offset));
+      if (params.status) query.set("status", params.status);
+      if (params.type) query.set("type", params.type);
+      if (params.endpoint_id) query.set("endpoint_id", params.endpoint_id);
+      const suffix = query.toString();
+      return request<EventListResponse>(`/events${suffix ? `?${suffix}` : ""}`);
+    },
     getEvent: (id: string) => request<EventDetail>(`/events/${id}`),
     getDelivery: (id: string) => request<DeliveryDetail>(`/deliveries/${id}`),
     listEndpoints: () => request<ListResponse<Endpoint>>("/endpoints"),
