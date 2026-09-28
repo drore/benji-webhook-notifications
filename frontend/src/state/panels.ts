@@ -76,6 +76,18 @@ export function movePanel(order: PanelKey[], key: PanelKey, target: PanelKey): P
   return next;
 }
 
+/** Move a panel one position within its column (keyboard fallback for dragging). */
+export function shiftPanel(order: PanelKey[], key: PanelKey, delta: number): PanelKey[] {
+  const from = order.indexOf(key);
+  if (from === -1) return order;
+  const to = from + delta;
+  if (to < 0 || to >= order.length) return order;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, key);
+  return next;
+}
+
 export function isDefaultLayout(layout: PanelLayout): boolean {
   return (
     layout.left.join(",") === DEFAULT_LAYOUT.left.join(",") &&

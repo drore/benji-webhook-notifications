@@ -7,6 +7,7 @@ import {
   movePanel,
   sanitizeLayout,
   saveLayout,
+  shiftPanel,
 } from "../src/state/panels";
 
 function memoryStorage(initial: Record<string, string> = {}): Storage {
@@ -39,6 +40,16 @@ describe("panel layout", () => {
     ]);
     // unknown keys leave the order untouched
     expect(movePanel(["a", "b"] as never[], "z" as never, "a" as never)).toEqual(["a", "b"]);
+  });
+
+  it("shifts a panel one position for keyboard reordering", () => {
+    const order = ["journey", "delivery", "events", "trend"] as const;
+    expect(shiftPanel([...order], "events", -1)).toEqual(["journey", "events", "delivery", "trend"]);
+    expect(shiftPanel([...order], "journey", 1)).toEqual(["delivery", "journey", "events", "trend"]);
+    // edges and unknown keys are no-ops
+    expect(shiftPanel([...order], "journey", -1)).toEqual([...order]);
+    expect(shiftPanel([...order], "trend", 1)).toEqual([...order]);
+    expect(shiftPanel([...order], "nope" as never, 1)).toEqual([...order]);
   });
 
   it("falls back to the default layout for unknown or incomplete data", () => {

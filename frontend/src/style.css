@@ -425,27 +425,36 @@ button.signal-pill:hover {
 
 .panel-grip {
   position: absolute;
-  top: 14px;
-  left: -20px;
-  width: 18px;
+  top: -8px;
+  right: -8px;
+  width: 26px;
   height: 26px;
   padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--border-strong);
-  font-size: 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--navy-soft);
+  font-size: 14px;
   line-height: 1;
+  box-shadow: var(--shadow);
   cursor: grab;
+  opacity: 0.9;
+  z-index: 2;
 }
 
 .panel-grip:hover {
   color: var(--purple);
+  border-color: var(--purple);
+  opacity: 1;
 }
 
-@media (max-width: 960px) {
-  .panel-grip {
-    display: none;
-  }
+.panel-grip:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.panel-slot.dragging .panel-grip {
+  cursor: grabbing;
 }
 
 .column {

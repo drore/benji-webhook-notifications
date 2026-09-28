@@ -554,4 +554,36 @@ test.describe("reviewer journey", () => {
     expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
     await expect(page.getByTestId("reset-layout")).toHaveCount(0);
   });
+
+  test("REQ-009 the reorder handle survives a narrow window and the keyboard", async ({ page }) => {
+    // A side panel or a small laptop leaves well under a thousand pixels.
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.goto("/");
+    const visualOrder = () =>
+      page
+        .locator(".column")
+        .first()
+        .locator("[data-panel-key]")
+        .evaluateAll((nodes) =>
+          nodes
+            .map((node) => ({
+              key: (node as HTMLElement).dataset.panelKey ?? "",
+              order: Number(getComputedStyle(node).order),
+            }))
+            .sort((a, b) => a.order - b.order)
+            .map((entry) => entry.key),
+        );
+
+    const grip = page.locator('[data-panel-key="events"] [data-testid="panel-grip"]');
+    await expect(grip).toBeVisible();
+    expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
+
+    await grip.focus();
+    await page.keyboard.press("ArrowUp");
+    const afterKeyboard = await visualOrder();
+    expect(afterKeyboard.indexOf("events")).toBeLessThan(afterKeyboard.indexOf("delivery"));
+
+    await page.keyboard.press("ArrowDown");
+    expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
+  });
 });

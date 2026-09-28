@@ -2,9 +2,13 @@
 import { onUnmounted, ref } from "vue";
 
 const props = defineProps<{ panelKey: string; label: string }>();
-const emit = defineEmits<{ move: [{ key: string; target: string }] }>();
+const emit = defineEmits<{
+  move: [{ key: string; target: string }];
+  shift: [{ key: string; delta: number }];
+}>();
 
 const dragging = ref(false);
+let lastMoveAt = { x: 0, y: 0 };
 
 function slotUnderPointer(event: PointerEvent): string | null {
   for (const slot of document.querySelectorAll<HTMLElement>("[data-panel-key]")) {
@@ -21,8 +25,13 @@ function slotUnderPointer(event: PointerEvent): string | null {
 
 function onPointerMove(event: PointerEvent): void {
   if (!dragging.value) return;
+  // Small dead zone: after a swap the panel moves under the pointer, and without
+  // this the rows would trade places on every pixel of movement.
+  const travelled = Math.hypot(event.clientX - lastMoveAt.x, event.clientY - lastMoveAt.y);
+  if (travelled < 12) return;
   const target = slotUnderPointer(event);
   if (target && target !== props.panelKey) {
+    lastMoveAt = { x: event.clientX, y: event.clientY };
     emit("move", { key: props.panelKey, target });
   }
 }
@@ -35,8 +44,15 @@ function stopDragging(): void {
 function startDragging(event: PointerEvent): void {
   event.preventDefault();
   dragging.value = true;
+  lastMoveAt = { x: event.clientX, y: event.clientY };
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", stopDragging, { once: true });
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+  event.preventDefault();
+  emit("shift", { key: props.panelKey, delta: event.key === "ArrowUp" ? -1 : 1 });
 }
 
 onUnmounted(stopDragging);
@@ -47,9 +63,11 @@ onUnmounted(stopDragging);
     <button
       type="button"
       class="panel-grip"
+      data-testid="panel-grip"
       :aria-label="`Reorder ${label}`"
-      :title="`Drag to reorder ${label}`"
+      :title="`Drag to reorder ${label}, or focus and press the arrow keys`"
       @pointerdown="startDragging"
+      @keydown="onKeydown"
     >
       ⠿
     </button>

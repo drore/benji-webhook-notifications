@@ -19,6 +19,7 @@ import {
   loadLayout,
   movePanel,
   saveLayout,
+  shiftPanel,
 } from "./state/panels";
 import type { PanelKey, PanelLayout } from "./state/panels";
 import { readSelection, selectionSearch } from "./state/location";
@@ -62,6 +63,11 @@ function movePanelTo(key: PanelKey, target: PanelKey): void {
 
 function resetLayout(): void {
   layout.value = structuredClone(DEFAULT_LAYOUT);
+}
+
+function shiftPanelBy(key: PanelKey, delta: number): void {
+  const column = columnOf(key);
+  layout.value[column] = shiftPanel(layout.value[column], key, delta);
 }
 
 watch([selectedEventId, selectedDeliveryId], ([eventId, deliveryId]) => {
@@ -149,6 +155,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.journey"
           :style="{ order: positionOf('journey') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <EventFlow
             :api="api"
@@ -161,6 +168,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.delivery"
           :style="{ order: positionOf('delivery') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <DeliveryPanel :api="api" :delivery-id="selectedDeliveryId" />
         </PanelSlot>
@@ -169,6 +177,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.events"
           :style="{ order: positionOf('events') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <EventsList
             :api="api"
@@ -181,6 +190,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.trend"
           :style="{ order: positionOf('trend') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <DeliveryTrend :api="api" />
         </PanelSlot>
@@ -191,6 +201,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.composer"
           :style="{ order: positionOf('composer') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <EventComposer :api="api" />
         </PanelSlot>
@@ -199,6 +210,7 @@ onMounted(async () => {
           :label="PANEL_LABELS.endpoints"
           :style="{ order: positionOf('endpoints') }"
           @move="movePanelTo($event.key as PanelKey, $event.target as PanelKey)"
+          @shift="shiftPanelBy($event.key as PanelKey, $event.delta)"
         >
           <EndpointsPanel :api="api" />
         </PanelSlot>
