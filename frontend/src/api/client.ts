@@ -30,6 +30,7 @@ export interface DeliverySummary {
   status: DeliveryStatus;
   due_at: string | null;
   attempts_count: number;
+  cycle_attempts: number;
   last_outcome: string | null;
   last_http_status: number | null;
 }

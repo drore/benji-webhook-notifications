@@ -145,6 +145,7 @@ export function attemptExplanation(
 
 export function attemptProgress(
   status: DeliveryStatus,
+  cycleAttempts: number,
   attemptsCount: number,
   dueAt: string | null,
   now = Date.now(),
@@ -153,18 +154,20 @@ export function attemptProgress(
     case "pending":
       return "waiting for the first attempt";
     case "in_progress":
-      return `attempt ${attemptsCount + 1} of 3 in flight`;
+      return `attempt ${cycleAttempts + 1} of 3 in flight`;
     case "retrying": {
       const seconds = dueAt ? Math.round((new Date(dueAt).getTime() - now) / 1000) : null;
       const when = seconds === null ? "scheduled" : seconds <= 0 ? "due now" : `next attempt in ${seconds}s`;
-      return `attempt ${attemptsCount + 1} of 3 · ${when}`;
+      return `attempt ${cycleAttempts + 1} of 3 · ${when}`;
     }
     case "paused":
-      return `paused with ${attemptsCount} of 3 attempts used`;
+      return `paused with ${cycleAttempts} of 3 attempts used this cycle`;
     case "succeeded":
       return `delivered on attempt ${Math.max(attemptsCount, 1)}`;
     case "failed":
-      return `failed after ${attemptsCount} of 3 attempts`;
+      return cycleAttempts === attemptsCount
+        ? `failed after ${cycleAttempts} of 3 attempts`
+        : `failed after ${cycleAttempts} of 3 this cycle · ${attemptsCount} attempts overall`;
   }
 }
 

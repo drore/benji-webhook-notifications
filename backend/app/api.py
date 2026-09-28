@@ -53,6 +53,7 @@ def _event_detail_dto(detail: store.EventDetail) -> dict:
                 "status": item.status,
                 "due_at": _iso(item.due_at) if item.due_at is not None else None,
                 "attempts_count": item.attempts_count,
+                "cycle_attempts": item.cycle_attempts,
                 "last_outcome": item.last_outcome,
                 "last_http_status": item.last_http_status,
             }

@@ -60,6 +60,7 @@ describe("EventFlow and DeliveryPanel", () => {
             status: "succeeded",
             due_at: null,
             attempts_count: 1,
+            cycle_attempts: 1,
             last_outcome: "success",
             last_http_status: 200,
           },
@@ -71,6 +72,7 @@ describe("EventFlow and DeliveryPanel", () => {
             status: "retrying",
             due_at: "2026-09-27T12:00:04Z",
             attempts_count: 1,
+            cycle_attempts: 1,
             last_outcome: "retryable_http",
             last_http_status: 500,
           },
@@ -106,6 +108,7 @@ describe("EventFlow and DeliveryPanel", () => {
             status: "failed",
             due_at: null,
             attempts_count: 1,
+            cycle_attempts: 1,
             last_outcome: "http_error",
             last_http_status: 404,
           },
@@ -119,6 +122,37 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(branch.text()).toContain("failed after 1 of 3 attempts");
     expect(branch.text()).toContain("Last: HTTP 404");
     expect(branch.get('[role="tooltip"]').text()).toContain("not found");
+  });
+
+  it("reports attempt progress per cycle, not the lifetime attempt count", async () => {
+    const api = fakeApi({
+      getEvent: async () => ({
+        id: "evt_1",
+        type: "reward_transaction_created",
+        payload: {},
+        created_at: "2026-09-27T12:00:00Z",
+        deliveries: [
+          {
+            id: "dlv_1",
+            endpoint_id: "ep_1",
+            endpoint_name: "Partner CRM",
+            endpoint_url: "http://127.0.0.1:9000/webhooks/crm",
+            status: "failed",
+            due_at: null,
+            attempts_count: 6, // one replay: three attempts in each of two cycles
+            cycle_attempts: 3,
+            last_outcome: "retryable_http",
+            last_http_status: 500,
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventFlow, { props: { api, eventId: "evt_1" } });
+    await flushPromises();
+    const branch = wrapper.get('[data-testid="branch"]');
+    expect(branch.text()).toContain("failed after 3 of 3 this cycle");
+    expect(branch.text()).toContain("6 attempts overall");
+    expect(branch.text()).not.toContain("6 of 3");
   });
 
   it("shows no-receivers explanation for an empty event", async () => {
@@ -251,6 +285,7 @@ describe("EventFlow and DeliveryPanel", () => {
             status,
             due_at: null,
             attempts_count: 1,
+            cycle_attempts: 1,
             last_outcome: status === "succeeded" ? "success" : "retryable_http",
             last_http_status: status === "succeeded" ? 200 : 500,
           },

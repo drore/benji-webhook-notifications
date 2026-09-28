@@ -40,6 +40,8 @@ def test_replay_cycle_retries_up_to_three_again(make_env):
     d = env.deliver_once()
     assert d["status"] == "failed"
     assert [a["number"] for a in d["attempts"]] == [1, 2, 3, 4, 5, 6]
+    summary = env.get_event(env.list_events()[0]["id"])["deliveries"][0]
+    assert summary["attempts_count"] == 6 and summary["cycle_attempts"] == 3
 
 
 def test_disabled_endpoint_blocks_replay_until_resumed(make_env):

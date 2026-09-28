@@ -30,6 +30,7 @@ function explain(delivery: DeliverySummary) {
         {{
           attemptProgress(
             data.delivery.status,
+            data.delivery.cycle_attempts,
             data.delivery.attempts_count,
             data.delivery.due_at,
           )

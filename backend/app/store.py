@@ -56,6 +56,7 @@ class DeliverySummary:
     status: str
     due_at: float | None
     attempts_count: int
+    cycle_attempts: int
     last_outcome: str | None = None
     last_http_status: int | None = None
 
@@ -282,7 +283,8 @@ def get_event(conn, event_id: str) -> EventDetail | None:
     if row is None:
         return None
     delivery_rows = conn.execute(
-        "SELECT d.id, d.endpoint_id, d.status, d.due_at, e.name AS endpoint_name,"
+        "SELECT d.id, d.endpoint_id, d.status, d.due_at, d.cycle_attempts,"
+        " e.name AS endpoint_name,"
         " e.url AS endpoint_url,"
         " (SELECT COUNT(*) FROM attempts a WHERE a.delivery_id = d.id) AS attempts_count,"
         " (SELECT a.outcome FROM attempts a WHERE a.delivery_id = d.id"
@@ -307,6 +309,7 @@ def get_event(conn, event_id: str) -> EventDetail | None:
                 status=delivery["status"],
                 due_at=delivery["due_at"],
                 attempts_count=delivery["attempts_count"],
+                cycle_attempts=delivery["cycle_attempts"],
                 last_outcome=delivery["last_outcome"],
                 last_http_status=delivery["last_http_status"],
             )
