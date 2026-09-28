@@ -198,4 +198,37 @@ test.describe("reviewer journey", () => {
     await selectLatestEvent(page, "campaign_updated");
     await expect(branchFor(page, name)).toHaveCount(0);
   });
+
+  test("REQ-008 switching events clears the previous delivery detail", async ({
+    page,
+    request,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Switch ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, {
+      name,
+      types: ["reward_transaction_created"],
+    });
+    await configureReceiver(request, secret, "success");
+    await enableEndpoint(page, name);
+
+    await publishEvent(page, {
+      type: "reward_transaction_created",
+      payload: `{"n":1,"suffix":"${suffix}"}`,
+    });
+    await selectLatestEvent(page, "reward_transaction_created");
+    await expect(branchFor(page, name)).toContainText("Delivered", { timeout: 15_000 });
+    await branchFor(page, name).click();
+    await expect(page.getByTestId("delivery-id")).toBeVisible();
+
+    await publishEvent(page, {
+      type: "reward_transaction_created",
+      payload: `{"n":2,"suffix":"${suffix}"}`,
+    });
+    await selectLatestEvent(page, "reward_transaction_created");
+
+    await expect(branchFor(page, name)).toBeVisible();
+    await expect(page.getByTestId("delivery-id")).toHaveCount(0);
+  });
 });

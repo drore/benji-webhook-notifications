@@ -221,6 +221,41 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(attempt.text().toLowerCase()).toContain("outcome unknown");
   });
 
+  it("clears the stale delivery when the journey selection is cleared", async () => {
+    const api = fakeApi({ getDelivery: async () => deliveryFixture });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+    expect(wrapper.text()).toContain("dlv_1");
+
+    await wrapper.setProps({ deliveryId: null });
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("dlv_1");
+    expect(wrapper.text()).toContain("Select a branch in the journey above");
+  });
+
+  it("rechecks replay eligibility before sending the request", async () => {
+    let loads = 0;
+    const replayDelivery = vi.fn(async () => ({ delivery_id: "dlv_1", status: "pending" }));
+    const api = fakeApi({
+      getDelivery: async () => {
+        loads += 1;
+        return loads === 1
+          ? deliveryFixture
+          : { ...deliveryFixture, endpoint: { ...deliveryFixture.endpoint, enabled: false } };
+      },
+      replayDelivery: replayDelivery as DashboardApi["replayDelivery"],
+    });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+
+    await wrapper.get('button[data-action="replay"]').trigger("click");
+    await flushPromises();
+
+    expect(replayDelivery).not.toHaveBeenCalled();
+    expect(wrapper.get('[data-testid="replay-unavailable"]').text()).toContain("disabled");
+  });
+
   it("explains each attempt outcome in context", async () => {
     const stamp = "2026-09-27T12:00:00Z";
     const api = fakeApi({

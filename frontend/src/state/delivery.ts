@@ -212,5 +212,26 @@ export function createDeliveryState(api: DashboardApi) {
     }
   }
 
-  return { delivery, loading, stale, lastUpdatedAt, error, replaying, replayError, load, replay };
+  function reset(): void {
+    delivery.value = null;
+    loading.value = false;
+    stale.value = false;
+    lastUpdatedAt.value = null;
+    error.value = null;
+    replaying.value = false;
+    replayError.value = null;
+  }
+
+  return {
+    delivery,
+    loading,
+    stale,
+    lastUpdatedAt,
+    error,
+    replaying,
+    replayError,
+    load,
+    replay,
+    reset,
+  };
 }

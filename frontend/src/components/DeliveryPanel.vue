@@ -10,9 +10,8 @@ function explain(attempt: Attempt) {
 }
 
 const props = defineProps<{ api: DashboardApi; deliveryId: string | null }>();
-const { delivery, loading, error, replaying, replayError, load, replay } = createDeliveryState(
-  props.api,
-);
+const { delivery, loading, error, replaying, replayError, load, replay, reset } =
+  createDeliveryState(props.api);
 
 let timer: number | null = null;
 
@@ -34,6 +33,9 @@ watch(
   () => props.deliveryId,
   (id) => {
     if (id) void load(id);
+    // Clearing the selection must also drop the previous delivery: keeping it
+    // would show another event's branch as if it belonged to the current one.
+    else reset();
   },
   { immediate: true },
 );
@@ -44,6 +46,14 @@ onUnmounted(stopPolling);
 const canReplay = computed(
   () => delivery.value?.status === "failed" && delivery.value?.endpoint.enabled === true,
 );
+
+async function attemptReplay(): Promise<void> {
+  if (!props.deliveryId) return;
+  // Polling can be up to two seconds behind; re-check before acting so a stale
+  // button cannot request a replay the server would reject.
+  await load(props.deliveryId);
+  if (canReplay.value) await replay();
+}
 
 function outcomeTone(outcome: string | null): string {
   if (outcome === "success") return "success";
@@ -164,7 +174,7 @@ function durationLabel(attempt: Attempt): string {
           class="btn btn-primary"
           data-action="replay"
           :disabled="replaying"
-          @click="replay"
+          @click="attemptReplay"
         >
           {{ replaying ? "Replaying…" : "Replay delivery" }}
         </button>
