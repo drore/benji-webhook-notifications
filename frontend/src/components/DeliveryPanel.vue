@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
-import { ApiError } from "../api/client";
 import {
   ATTEMPTS_PER_CYCLE,
   attemptDurationLabel,
@@ -28,8 +27,20 @@ function explain(attempt: Attempt) {
 }
 
 const props = defineProps<{ api: DashboardApi; deliveryId: string | null }>();
-const { delivery, loading, error, replaying, replayError, lastUpdatedAt, load, replay, reset } =
-  createDeliveryState(props.api);
+const {
+  delivery,
+  loading,
+  error,
+  replaying,
+  replayError,
+  endpointBusy,
+  actionError,
+  lastUpdatedAt,
+  load,
+  replay,
+  toggleEndpoint,
+  reset,
+} = createDeliveryState(props.api);
 
 let timer: number | null = null;
 
@@ -71,23 +82,6 @@ const canReplay = computed(
 
 const copiedReport = ref(false);
 const copiedId = ref(false);
-const endpointBusy = ref(false);
-const actionError = ref<string | null>(null);
-
-async function toggleEndpoint(): Promise<void> {
-  const current = delivery.value;
-  if (!current || endpointBusy.value) return;
-  endpointBusy.value = true;
-  actionError.value = null;
-  try {
-    await props.api.setEndpointEnabled(current.endpoint.id, !current.endpoint.enabled);
-    if (props.deliveryId) await load(props.deliveryId);
-  } catch (cause) {
-    actionError.value = cause instanceof ApiError ? cause.message : "Could not change the endpoint.";
-  } finally {
-    endpointBusy.value = false;
-  }
-}
 
 async function copyDeliveryId(): Promise<void> {
   if (!delivery.value) return;

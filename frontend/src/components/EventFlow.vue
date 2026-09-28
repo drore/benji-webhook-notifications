@@ -3,18 +3,12 @@ import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
 import { VueFlow, useVueFlow } from "@vue-flow/core";
 import type { Edge, Node } from "@vue-flow/core";
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 
-import type { DashboardApi, EventDetail } from "../api/client";
+import type { DashboardApi } from "../api/client";
 import { STATUS_COLORS } from "../state/delivery";
-import {
-  POLL_INTERVAL_MS,
-  freshnessLabel,
-  frozen,
-  now,
-  refreshToken,
-  shouldPoll,
-} from "../state/live";
+import { createEventFlowState } from "../state/eventFlow";
+import { freshnessLabel, frozen, now, refreshToken } from "../state/live";
 import LiveDot from "./LiveDot.vue";
 import EndpointNode from "./flow/EndpointNode.vue";
 import EventNode from "./flow/EventNode.vue";
@@ -26,82 +20,32 @@ import "@vue-flow/controls/dist/style.css";
 const props = defineProps<{ api: DashboardApi; eventId: string | null }>();
 const emit = defineEmits<{ "select-delivery": [deliveryId: string] }>();
 
-const event = ref<EventDetail | null>(null);
-const loading = ref(false);
-const error = ref<string | null>(null);
-const replayingAll = ref(false);
-const replaySummary = ref<string | null>(null);
-const lastUpdatedAt = ref<Date | null>(null);
-let timer: number | null = null;
+const {
+  event,
+  loading,
+  error,
+  lastUpdatedAt,
+  replayingAll,
+  replaySummary,
+  load,
+  replayFailed: replayAllFailed,
+  startPolling,
+  stopPolling,
+} = createEventFlowState(props.api);
 
 const failedDeliveries = computed(() =>
   (event.value?.deliveries ?? []).filter((delivery) => delivery.status === "failed"),
 );
 
-async function replayAllFailed(): Promise<void> {
-  const targets = failedDeliveries.value;
-  if (replayingAll.value || !targets.length) return;
-  replayingAll.value = true;
-  replaySummary.value = null;
-  let replayed = 0;
-  const blocked: string[] = [];
-  for (const delivery of targets) {
-    try {
-      await props.api.replayDelivery(delivery.id);
-      replayed += 1;
-    } catch {
-      blocked.push(delivery.endpoint_name);
-    }
-  }
-  replaySummary.value = blocked.length
-    ? `Replayed ${replayed} of ${targets.length}; ${blocked.length} could not start (${blocked.join(
-        ", ",
-      )}) — a disabled endpoint blocks replay until it is resumed.`
-    : `Replayed ${replayed} of ${targets.length} failed deliveries — attempts append to the same delivery.`;
-  replayingAll.value = false;
-  await load();
-}
-
 const { fitView } = useVueFlow();
 
-async function load(): Promise<void> {
-  if (!props.eventId) {
-    event.value = null;
-    return;
-  }
-  loading.value = true;
-  try {
-    event.value = await props.api.getEvent(props.eventId);
-    lastUpdatedAt.value = new Date();
-    error.value = null;
-  } catch {
-    error.value = "Could not load the selected event.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-function startPolling(): void {
-  stopPolling();
-  timer = window.setInterval(() => {
-    if (shouldPoll()) void load();
-  }, POLL_INTERVAL_MS);
-}
-
-function stopPolling(): void {
-  if (timer !== null) {
-    window.clearInterval(timer);
-    timer = null;
-  }
-}
-
 onMounted(async () => {
-  await load();
-  startPolling();
+  await load(props.eventId);
+  startPolling(() => props.eventId);
 });
 onUnmounted(stopPolling);
-watch(() => props.eventId, load);
-watch(refreshToken, () => void load());
+watch(() => props.eventId, (eventId) => void load(eventId));
+watch(refreshToken, () => void load(props.eventId));
 
 const nodes = computed<Node[]>(() => {
   if (!event.value) return [];

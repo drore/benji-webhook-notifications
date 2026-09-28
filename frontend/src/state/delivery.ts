@@ -188,6 +188,8 @@ export function createDeliveryState(api: DashboardApi) {
   const error = ref<string | null>(null);
   const replaying = ref(false);
   const replayError = ref<string | null>(null);
+  const endpointBusy = ref(false);
+  const actionError = ref<string | null>(null);
 
   async function load(id: string): Promise<void> {
     loading.value = true;
@@ -221,6 +223,25 @@ export function createDeliveryState(api: DashboardApi) {
     }
   }
 
+  /** Disable or resume the endpoint this delivery belongs to. */
+  async function toggleEndpoint(): Promise<boolean> {
+    const current = delivery.value;
+    if (!current || endpointBusy.value) return false;
+    endpointBusy.value = true;
+    actionError.value = null;
+    try {
+      await api.setEndpointEnabled(current.endpoint.id, !current.endpoint.enabled);
+      await load(current.id);
+      return true;
+    } catch (cause) {
+      actionError.value =
+        cause instanceof ApiError ? cause.message : "Could not change the endpoint.";
+      return false;
+    } finally {
+      endpointBusy.value = false;
+    }
+  }
+
   function reset(): void {
     delivery.value = null;
     loading.value = false;
@@ -229,6 +250,8 @@ export function createDeliveryState(api: DashboardApi) {
     error.value = null;
     replaying.value = false;
     replayError.value = null;
+    endpointBusy.value = false;
+    actionError.value = null;
   }
 
   return {
@@ -239,8 +262,11 @@ export function createDeliveryState(api: DashboardApi) {
     error,
     replaying,
     replayError,
+    endpointBusy,
+    actionError,
     load,
     replay,
+    toggleEndpoint,
     reset,
   };
 }
