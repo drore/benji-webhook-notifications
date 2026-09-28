@@ -102,7 +102,7 @@ The agent may not push, publish, deploy, or spend on its own initiative. Both bo
 
 I measure an agent the way I'd manage an engineer — pace, cost, and what it actually produced — and I keep a record I can present later instead of reconstructing it from memory. The journal stores my messages verbatim, summarizes each assistant turn in one short paragraph, and states that it does not claim to contain private model reasoning.
 
-*Evidence:* `benji-task`'s `docs/process/developer-journal.md` (81 recorded turns on the build branch, a maintenance rule, and an Obsidian mirror with readback), its `token-expenditure.md` (per-session usage with cached-input accounting, no invented prices, and external Gemini usage marked as excluded), and its `engineering-principles-audit.md`, `security-review.md`, and `potential-improvements.md`; this repo's `docs/process/worklog.md` (~3h35m focused against the assignment's one-day constraint, rounded and labeled as such).
+*Evidence:* the earlier attempt's process records — a maintained developer journal with an explicit maintenance rule and an Obsidian mirror (the quotes above come from it), plus its engineering-principles audit, security review, and potential-improvements list — and this repo's `docs/process/worklog.md` (~3h35m focused against the assignment's one-day constraint, rounded and labeled as such).
 
 ## Where this costs me
 
