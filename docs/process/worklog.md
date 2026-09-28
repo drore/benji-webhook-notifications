@@ -23,4 +23,9 @@ Records focused effort for the assignment's under-one-day constraint (CON-01). T
 | 2026-09-27 | 23:35–23:55 | Tasks 12–14: dashboard panels; 15 frontend tests, build | Commits `b332f92`–`8719a76` |
 | 2026-09-27 | 23:55–01:10 | Post-review UX iteration (redesign, Vue Flow journey, simplifications, Playwright suite, playtesting, attempt timeline) | Commits `9427e7c`–`669ce56` |
 
-Total focused time so far: approximately 3 hours 35 minutes (including the earlier design and plan phases; approximations rounded to five minutes).
+| 2026-09-28 | 09:50–11:10 | Learn the requirements, stand up the three services, computer-use playtest of the full reviewer journey plus boundary probes (signature tamper, URL policy, dedupe/conflict, disable/pause/resume, stale polling, crash mid-attempt) | Findings recorded; test DB `data/playtest.sqlite3` |
+| 2026-09-28 | 11:10–11:45 | Playtest fixes with tests first: tick-level lease sweep (AC-11), delivery-panel reset + replay re-check, cycle-aware attempt progress, retained one-time secrets, receiver self-refresh; decisions register; fresh-clone verification | Commits `d11c0cd`–`5dc3bc1` |
+| 2026-09-28 | 11:45–12:30 | Investigation tier: URL state + Find by ID, filtered/paginated events with actionable header signals, cycle-grouped timeline with in-flight row, event-type registry + enforce-schema switch and tooltip, copyable report, bulk replay and panel actions, delivery trend, pause/refresh/freshness, FR-01/FR-09 amendment | Commits `6e9f365`–`0ed71a9` |
+| 2026-09-28 | 12:30–13:05 | Live dot, simulated traffic, reorderable panels, tighter timeline, single top-bar status, polling-vs-push rationale, scalability assessment (D-31/D-32), final fresh-clone verification | Commits `642d95f`–`09de338` |
+
+Total focused time so far: approximately **6 hours 50 minutes** — 2026-09-27 ≈3h35m and 2026-09-28 ≈3h15m — still inside the assignment's one-day budget. Times are reconstructed from commit timestamps and the session record and rounded to five minutes, not measured with a stopwatch.
