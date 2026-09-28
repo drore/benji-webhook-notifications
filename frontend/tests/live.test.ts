@@ -14,6 +14,7 @@ import {
   shouldPoll,
   updatedLabel,
 } from "../src/state/live";
+import { followLive, latestEventId, setFollowLive, setLatestEventId, toggleFollowLive } from "../src/state/stream";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -76,6 +77,16 @@ describe("live updates", () => {
     const before = refreshToken.value;
     requestRefresh();
     expect(refreshToken.value).toBe(before + 1);
+  });
+
+  it("tracks the newest event and the follow-live switch", () => {
+    setLatestEventId("evt_new");
+    expect(latestEventId.value).toBe("evt_new");
+    setFollowLive(false);
+    toggleFollowLive();
+    expect(followLive.value).toBe(true);
+    toggleFollowLive();
+    expect(followLive.value).toBe(false);
   });
 
   it("stops polling while frozen and catches up on refresh", async () => {

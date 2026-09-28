@@ -9,9 +9,11 @@ import type { DashboardApi } from "../api/client";
 import { STATUS_COLORS } from "../state/delivery";
 import { createEventFlowState } from "../state/eventFlow";
 import { freshnessLabel, frozen, now, refreshToken } from "../state/live";
+import { followLive, toggleFollowLive } from "../state/stream";
 import LiveDot from "./LiveDot.vue";
 import EndpointNode from "./flow/EndpointNode.vue";
 import EventNode from "./flow/EventNode.vue";
+import TrafficEdge from "./flow/TrafficEdge.vue";
 
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
@@ -77,13 +79,24 @@ const edges = computed<Edge[]>(() =>
     id: `edge-${delivery.id}`,
     source: `event-${event.value?.id}`,
     target: delivery.id,
-    type: "smoothstep",
-    animated: ["pending", "in_progress", "retrying"].includes(delivery.status),
-    style: { stroke: STATUS_COLORS[delivery.status], strokeWidth: 2 },
+    type: "traffic",
+    data: {
+      color: STATUS_COLORS[delivery.status],
+      active: ["pending", "in_progress", "retrying"].includes(delivery.status),
+    },
     selectable: false,
     focusable: false,
   })),
 );
+
+// A single receiver means there is nothing to choose: open it straight away.
+let autoOpenedFor: string | null = null;
+watch(event, (value) => {
+  if (!value || value.deliveries.length !== 1) return;
+  if (autoOpenedFor === value.id) return;
+  autoOpenedFor = value.id;
+  emit("select-delivery", value.deliveries[0].id);
+});
 
 const canvasHeight = computed(() =>
   Math.max(260, 120 + (event.value?.deliveries.length ?? 0) * 124),
@@ -108,10 +121,26 @@ function onNodeClick(payload: { node: Node }): void {
   <section class="card">
     <div class="card-header">
       <h2>Event journey</h2>
-      <span v-if="event" class="freshness" data-testid="journey-freshness">
-        <LiveDot :paused="frozen" />
-        {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
-      </span>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="btn btn-small"
+          :class="{ 'btn-primary': followLive }"
+          data-testid="follow-live"
+          :title="
+            followLive
+              ? 'Stop jumping to each new event'
+              : 'Jump to each new event as it arrives, and watch its traffic'
+          "
+          @click="toggleFollowLive"
+        >
+          {{ followLive ? "Following live" : "Follow live" }}
+        </button>
+        <span v-if="event" class="freshness" data-testid="journey-freshness">
+          <LiveDot :paused="frozen" />
+          {{ freshnessLabel(lastUpdatedAt, frozen, now) }}
+        </span>
+      </div>
     </div>
     <p class="card-hint">
       One branch per matching endpoint. Click an endpoint node to inspect its attempts and
@@ -157,6 +186,9 @@ function onNodeClick(payload: { node: Node }): void {
           </template>
           <template #node-endpoint="nodeProps">
             <EndpointNode v-bind="nodeProps" />
+          </template>
+          <template #edge-traffic="edgeProps">
+            <TrafficEdge v-bind="edgeProps" />
           </template>
           <Background :gap="20" :size="1.4" />
           <Controls :show-interactive="false" position="bottom-right" />

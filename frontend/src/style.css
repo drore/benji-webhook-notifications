@@ -267,6 +267,28 @@ button.signal-pill:hover {
   text-anchor: middle;
 }
 
+/* Journey traffic: the line flows while an attempt is in flight. */
+.flow-edge-flow {
+  stroke-dasharray: 6 10;
+  animation: flow-dash 900ms linear infinite;
+  opacity: 0.55;
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-edge-flow {
+    animation: none;
+  }
+  .flow-edge-packet {
+    display: none;
+  }
+}
+
 .freshness {
   font-size: 12px;
   color: var(--muted);

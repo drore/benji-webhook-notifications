@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi, Endpoint } from "../api/client";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../state/filters";
 import { createEventsState } from "../state/events";
 import { freshnessLabel, frozen, now } from "../state/live";
+import { setLatestEventId } from "../state/stream";
 import LiveDot from "./LiveDot.vue";
 
 const props = defineProps<{ api: DashboardApi; selectedEventId: string | null }>();
@@ -43,6 +44,12 @@ onMounted(async () => {
   }
 });
 onUnmounted(() => stopPolling());
+
+watch(
+  events,
+  (list) => setLatestEventId(list[0]?.id ?? null),
+  { immediate: true },
+);
 
 const types = computed(() => {
   const seen = new Set(events.value.map((event) => event.type));

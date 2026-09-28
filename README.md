@@ -1,4 +1,4 @@
-# Benji webhook notification system — lean build
+# Benji webhook notification system — developer take-home task
 
 A locally runnable webhook sender and operations dashboard for the [Benji senior engineer take-home](https://even-foxglove-53c.notion.site/Sr-Software-Engineer-380b9f151bae81218487d84c42741d17). Endpoints subscribe to event types; publishing an event fans out one signed HTTP delivery per matching enabled endpoint; a worker retries transport failures with bounded exponential backoff; failures keep their full attempt history and can be replayed. The Vue dashboard shows the event fan-out, live status, attempts, and replay.
 
@@ -82,6 +82,8 @@ Open the dashboard at http://127.0.0.1:5173/, the receiver at http://127.0.0.1:9
    The selected event and delivery stay in the URL (`?event=evt_…&delivery=dlv_…`), so a view survives a reload and can be shared, and the **Find by ID** box in the header jumps straight to any `evt_…` or `dlv_…` id you paste from a log.
 
    **Pause live updates** in the header freezes every panel for careful reading, and **Refresh now** fetches everything once; each card header shows whether it is live and how old its data is.
+
+   The journey has a **Follow live** toggle: with it on, each new event takes over the canvas by itself, which pairs well with **Simulate traffic** below. Flow lines carry a moving packet and a flowing dash while an attempt is actually in flight, and an event with a single receiver opens that delivery automatically.
 
    **Simulate traffic** in the publish card pushes events on an interval (2s, 5s, or 10s) to the event type you pick, so the journey, attempts, and trend fill up the way real traffic would. Panels can also be reordered: drag the handle in a card's top-right corner, or focus that handle and press the arrow keys, and **Reset layout** restores the default arrangement.
 5. **Deduplicate and conflict.** The submission key rotates automatically after each accepted event. To demonstrate deduplication, paste the previous key back into **Submission key** and publish the same payload — the dashboard reports `Already accepted` with the original event ID and creates no new delivery. Change the payload while keeping that key and publish to see the `409` conflict notice.

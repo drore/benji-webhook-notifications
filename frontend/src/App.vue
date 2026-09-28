@@ -24,6 +24,7 @@ import {
 import type { PanelKey, PanelLayout } from "./state/panels";
 import { readSelection, selectionSearch } from "./state/location";
 import type { Selection } from "./state/location";
+import { followLive, latestEventId } from "./state/stream";
 
 const api = createDashboardApi();
 const status = ref("Checking API…");
@@ -104,6 +105,13 @@ function resetLayout(): void {
     layout.value = structuredClone(DEFAULT_LAYOUT);
   });
 }
+
+// "Follow live" moves the selection to each new event, which the URL keeps in
+// step. Turning it off leaves the operator wherever they were.
+watch([followLive, latestEventId], ([following, newest]) => {
+  if (!following || !newest || newest === selectedEventId.value) return;
+  applySelection({ eventId: newest, deliveryId: null });
+});
 
 function shiftPanelBy(key: PanelKey, delta: number): void {
   const column = columnOf(key);

@@ -602,4 +602,41 @@ test.describe("reviewer journey", () => {
     await page.keyboard.press("ArrowDown");
     expect(await visualOrder()).toEqual(["journey", "delivery", "events", "trend"]);
   });
+
+  test("REQ-009 the journey follows live events, opens a lone receiver, and shows traffic", async ({
+    page,
+    request,
+  }) => {
+    const suffix = uniqueSuffix();
+    const eventType = `e2e_live_${suffix}`;
+    const name = `E2E Live ${suffix}`;
+    await page.goto("/");
+    const secret = await createEndpoint(page, { name, types: [eventType] });
+    // Slow on purpose: the attempt stays in flight long enough to see the packet.
+    await request.post(`${RECEIVER_URL}/api/config`, {
+      data: { secret, behavior: "slow", slow_seconds: 4 },
+    });
+    await enableEndpoint(page, name);
+
+    await publishEvent(page, { type: "custom", custom: eventType, payload: `{"n":1}` });
+    const firstEvent = (await acceptedEventId(page)) as string;
+    await selectEventById(page, firstEvent);
+
+    // One receiver → the delivery panel opens without a second click.
+    await expect(page.getByTestId("delivery-id")).toBeVisible({ timeout: 15_000 });
+    // Traffic → the in-flight attempt draws a packet on the flow line.
+    await expect(page.getByTestId("flow-packet").first()).toBeVisible({ timeout: 15_000 });
+
+    // Follow live → a new event takes over the journey on its own.
+    await page.getByTestId("follow-live").click();
+    await expect(page.getByTestId("follow-live")).toHaveText("Following live");
+    const apiUrl = process.env.PW_API_URL ?? "http://127.0.0.1:8000";
+    const published = await request.post(`${apiUrl}/api/events`, {
+      data: { idempotency_key: `live-${suffix}`, type: eventType, payload: { n: 2 } },
+    });
+    expect(published.status()).toBe(201);
+    const secondEvent = (await published.json())["event_id"] as string;
+    await expect(page.getByTestId("event-node")).toContainText(secondEvent, { timeout: 15_000 });
+    await expect(page.getByTestId("delivery-id")).toBeVisible({ timeout: 15_000 });
+  });
 });
