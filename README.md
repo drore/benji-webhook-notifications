@@ -87,5 +87,5 @@ This is a deliberately local, single-customer demo with no login. Destination UR
 ## Project records
 
 - [Design specification](docs/spec/design.md) · [implementation plan](docs/plan/implementation-plan.md)
-- [AI usage note](docs/process/ai-usage.md) · [focused work log](docs/process/worklog.md)
+- [Decisions and trade-offs](docs/process/decisions-and-tradeoffs.md) · [AI usage note](docs/process/ai-usage.md) · [focused work log](docs/process/worklog.md)
 - [Engineering instructions](AGENTS.md)
