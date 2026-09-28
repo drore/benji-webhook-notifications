@@ -30,6 +30,7 @@ const deliveryFixture: DeliveryDetail = {
   status: "failed",
   due_at: null,
   cycle_attempts: 3,
+  claim_started_at: null,
   attempts: [
     {
       id: 1,
@@ -219,6 +220,51 @@ describe("EventFlow and DeliveryPanel", () => {
     const attempt = wrapper.get('[data-testid="attempt-row"]');
     expect(attempt.text()).toContain("Timeout");
     expect(attempt.text().toLowerCase()).toContain("outcome unknown");
+  });
+
+  it("groups attempts by retry cycle and shows the running attempt", async () => {
+    const stamp = "2026-09-27T12:00:00Z";
+    const api = fakeApi({
+      getDelivery: async () => ({
+        ...deliveryFixture,
+        status: "in_progress" as const,
+        cycle_attempts: 1,
+        claim_started_at: new Date(Date.now() - 1500).toISOString(),
+        attempts: [1, 2, 3, 4, 5, 6].map((number) => ({
+          id: number,
+          number,
+          started_at: stamp,
+          finished_at: stamp,
+          outcome: "retryable_http",
+          http_status: 500,
+          response_excerpt: null,
+        })),
+      }),
+    });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+
+    const cycles = wrapper.findAll('[data-testid="attempt-cycle"]');
+    expect(cycles).toHaveLength(2);
+    expect(cycles[0].text()).toContain("Cycle 1");
+    expect(cycles[1].text()).toContain("Cycle 2");
+    expect(cycles[1].text()).toContain("replay");
+    expect(cycles[1].findAll('[data-testid="attempt-row"]')).toHaveLength(3);
+
+    const running = wrapper.get('[data-testid="attempt-in-flight"]');
+    expect(running.text()).toContain("attempt 7");
+    expect(running.text()).toContain("in flight");
+  });
+
+  it("keeps a single cycle unlabelled as a replay", async () => {
+    const api = fakeApi({ getDelivery: async () => deliveryFixture });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+    const cycles = wrapper.findAll('[data-testid="attempt-cycle"]');
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0].text()).toContain("Cycle 1");
+    expect(cycles[0].text()).not.toContain("replay");
+    expect(wrapper.find('[data-testid="attempt-in-flight"]').exists()).toBe(false);
   });
 
   it("clears the stale delivery when the journey selection is cleared", async () => {

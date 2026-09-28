@@ -113,6 +113,7 @@ class DeliveryDetail:
     status: str
     due_at: float | None
     cycle_attempts: int
+    claim_started_at: float | None
     attempts: list[AttemptRecord] = field(default_factory=list)
 
 
@@ -388,6 +389,7 @@ def get_delivery(conn, delivery_id: str) -> DeliveryDetail | None:
         status=row["status"],
         due_at=row["due_at"],
         cycle_attempts=row["cycle_attempts"],
+        claim_started_at=row["claim_started_at"],
         attempts=[
             AttemptRecord(
                 id=attempt["id"],

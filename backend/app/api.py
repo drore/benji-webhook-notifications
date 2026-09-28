@@ -82,6 +82,9 @@ def _delivery_detail_dto(detail: store.DeliveryDetail) -> dict:
         "status": detail.status,
         "due_at": _iso(detail.due_at) if detail.due_at is not None else None,
         "cycle_attempts": detail.cycle_attempts,
+        "claim_started_at": (
+            _iso(detail.claim_started_at) if detail.claim_started_at is not None else None
+        ),
         "attempts": [
             {
                 "id": attempt.id,

@@ -47,6 +47,35 @@ const canReplay = computed(
   () => delivery.value?.status === "failed" && delivery.value?.endpoint.enabled === true,
 );
 
+const ATTEMPTS_PER_CYCLE = 3;
+
+const cycles = computed(() => {
+  const groups: { index: number; attempts: Attempt[] }[] = [];
+  for (const [position, attempt] of (delivery.value?.attempts ?? []).entries()) {
+    const index = Math.floor(position / ATTEMPTS_PER_CYCLE);
+    groups[index] ??= { index, attempts: [] };
+    groups[index].attempts.push(attempt);
+  }
+  if (!groups.length && delivery.value?.status === "in_progress") {
+    groups.push({ index: 0, attempts: [] });
+  }
+  return groups;
+});
+
+const inFlight = computed(() => {
+  if (delivery.value?.status !== "in_progress") return null;
+  return {
+    number: (delivery.value.attempts?.length ?? 0) + 1,
+    startedAt: delivery.value.claim_started_at,
+  };
+});
+
+function elapsedLabel(startedAt: string | null): string {
+  if (!startedAt) return "in flight";
+  const seconds = Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 1000);
+  return `in flight · ${seconds < 10 ? seconds.toFixed(1) : `${Math.round(seconds)}`}s`;
+}
+
 async function attemptReplay(): Promise<void> {
   if (!props.deliveryId) return;
   // Polling can be up to two seconds behind; re-check before acting so a stale
@@ -107,15 +136,20 @@ function durationLabel(attempt: Attempt): string {
       <h3 style="font-size: 14px; margin: 0 0 8px">Payload</h3>
       <pre data-testid="payload-json">{{ JSON.stringify(delivery.event.payload, null, 2) }}</pre>
       <h3 style="font-size: 14px; margin: 0 0 8px">Attempts</h3>
-      <p v-if="!delivery.attempts.length" class="muted">No attempts recorded yet.</p>
-      <ol v-else class="timeline">
-        <li
-          v-for="attempt in delivery.attempts"
-          :key="attempt.id"
-          data-testid="attempt-row"
-          class="timeline-item"
-          :data-outcome="attempt.outcome"
-        >
+      <p v-if="!cycles.length" class="muted">No attempts recorded yet.</p>
+      <div v-for="cycle in cycles" :key="cycle.index" data-testid="attempt-cycle">
+        <p class="cycle-label">
+          Cycle {{ cycle.index + 1 }}
+          <span v-if="cycle.index > 0" class="muted">· replay</span>
+        </p>
+        <ol class="timeline">
+          <li
+            v-for="attempt in cycle.attempts"
+            :key="attempt.id"
+            data-testid="attempt-row"
+            class="timeline-item"
+            :data-outcome="attempt.outcome"
+          >
           <span
             class="timeline-dot"
             :data-tone="outcomeTone(attempt.outcome)"
@@ -154,19 +188,30 @@ function durationLabel(attempt: Attempt): string {
             </div>
             <blockquote v-if="attempt.response_excerpt">{{ attempt.response_excerpt }}</blockquote>
           </div>
-        </li>
-        <li
-          v-if="delivery.status === 'retrying'"
-          data-testid="next-attempt"
-          class="timeline-item"
-        >
-          <span class="timeline-dot" data-tone="pending" aria-hidden="true"></span>
-          <div class="timeline-card muted">
-            Next attempt #{{ delivery.attempts.length + 1 }} scheduled for
-            {{ delivery.due_at ? new Date(delivery.due_at).toLocaleTimeString() : "—" }}
-          </div>
-        </li>
-      </ol>
+          </li>
+          <li
+            v-if="inFlight && cycle.index === cycles.length - 1"
+            data-testid="attempt-in-flight"
+            class="timeline-item"
+          >
+            <span class="timeline-dot" data-tone="retrying" aria-hidden="true"></span>
+            <div class="timeline-card">
+              attempt {{ inFlight.number }} · {{ elapsedLabel(inFlight.startedAt) }}
+            </div>
+          </li>
+          <li
+            v-if="cycle.index === cycles.length - 1 && delivery.status === 'retrying'"
+            data-testid="next-attempt"
+            class="timeline-item"
+          >
+            <span class="timeline-dot" data-tone="pending" aria-hidden="true"></span>
+            <div class="timeline-card muted">
+              Next attempt #{{ delivery.attempts.length + 1 }} scheduled for
+              {{ delivery.due_at ? new Date(delivery.due_at).toLocaleTimeString() : "—" }}
+            </div>
+          </li>
+        </ol>
+      </div>
       <div class="replay-area">
         <button
           v-if="canReplay"

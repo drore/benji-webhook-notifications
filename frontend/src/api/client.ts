@@ -76,6 +76,7 @@ export interface DeliveryDetail {
   status: DeliveryStatus;
   due_at: string | null;
   cycle_attempts: number;
+  claim_started_at: string | null;
   attempts: Attempt[];
 }
 

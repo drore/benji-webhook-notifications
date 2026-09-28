@@ -146,6 +146,12 @@ test.describe("reviewer journey", () => {
     await page.getByRole("button", { name: "Replay delivery" }).click();
     await expect(page.getByTestId("attempt-row")).toHaveCount(6, { timeout: 25_000 });
     await expect(page.getByTestId("delivery-id")).toHaveText(deliveryId);
+    const cycles = page.getByTestId("attempt-cycle");
+    await expect(cycles).toHaveCount(2);
+    await expect(cycles.nth(0)).toContainText("Cycle 1");
+    await expect(cycles.nth(1)).toContainText("Cycle 2");
+    await expect(cycles.nth(1)).toContainText("replay");
+    await expect(cycles.nth(1).getByTestId("attempt-row")).toHaveCount(3);
     await receiverPage.reload();
     await expect(receiverRows).toHaveCount(6);
     await expect(receiverRows.last()).toContainText("verified");
@@ -311,10 +317,20 @@ test.describe("reviewer journey", () => {
       payload: `{"n":1,"suffix":"${suffix}"}`,
     });
     const failedEvent = (await acceptedEventId(page)) as string;
-    await publishEvent(page, { type: "campaign_updated", payload: `{"n":2,"suffix":"${suffix}"}` });
+    // Wait for this event's own delivery to exhaust its cycle; earlier tests
+    // leave failures behind, so the header count alone is not evidence.
+    await selectEventById(page, failedEvent);
+    await expect(branchFor(page, name)).toContainText("Failed", { timeout: 20_000 });
+
+    // A type nobody subscribes to, so the event really has no receivers even
+    // though earlier tests leave other endpoints enabled.
+    await publishEvent(page, {
+      type: "custom",
+      custom: `e2e_unrouted_${suffix}`,
+      payload: `{"n":2,"suffix":"${suffix}"}`,
+    });
     const unmatchedEvent = (await acceptedEventId(page)) as string;
 
-    await expect(page.getByTestId("failed-count")).not.toHaveText("0", { timeout: 20_000 });
     await page.getByTestId("failed-signal").click();
     await expect(page.getByTestId("event-row").filter({ hasText: failedEvent })).toBeVisible();
     await expect(page.getByTestId("event-row").filter({ hasText: unmatchedEvent })).toHaveCount(0);
