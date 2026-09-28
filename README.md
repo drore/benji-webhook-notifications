@@ -82,6 +82,10 @@ Event types are open: any name matching `[A-Za-z0-9_.-]{1,64}` can be published 
 - A rejected payload returns `400 validation_error` with field paths only — no values, no event, and the submission key is not consumed.
 - To add a contract, add a pydantic model and a registry entry in `backend/app/event_schemas.py`; the type then appears in the dashboard with its expected shape.
 
+### Delivery trend
+
+The **Delivery trend** card answers "how is this event type doing?" for one type at a time: pick the type and a window (6 hours, 24 hours, or 7 days) to see delivery volume, success rate, failures, average attempts per delivery, and average attempt duration, plus a bar per time bucket with a tooltip for the exact counts. `GET /api/event-types/{type}/stats?hours=24&buckets=24` backs it. A delivery is counted in the bucket where it was created and under its current status, so the newest bucket can still change while a delivery retries or is replayed.
+
 ## Tests
 
 ```sh

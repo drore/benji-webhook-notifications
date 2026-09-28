@@ -206,6 +206,8 @@ EVENT_STATUS_FILTERS = frozenset(
 )
 NO_RECEIVERS_FILTER = "no_receivers"
 
+DELIVERY_STATUSES = ("pending", "in_progress", "retrying", "paused", "succeeded", "failed")
+
 
 @dataclass
 class EventPage:
@@ -369,6 +371,75 @@ def get_event(conn, event_id: str) -> EventDetail | None:
             for delivery in delivery_rows
         ],
     )
+
+
+def event_type_stats(conn, event_type: str, now: float, hours: int, buckets: int) -> dict:
+    """Delivery performance for one event type over a bucketed time window.
+
+    A delivery is counted in the bucket where it was created and under its
+    *current* status, so a bucket can still change while a delivery retries or
+    is replayed.
+    """
+    bucket_seconds = max(1, int((hours * 3600) / buckets))
+    window_start = now - hours * 3600
+
+    def index_for(created_at: float) -> int:
+        index = int((created_at - window_start) / bucket_seconds)
+        return max(0, min(index, buckets - 1))
+
+    series = [
+        {
+            "start": window_start + index * bucket_seconds,
+            "events": 0,
+            "deliveries": 0,
+            **{status: 0 for status in DELIVERY_STATUSES},
+        }
+        for index in range(buckets)
+    ]
+
+    for row in conn.execute(
+        "SELECT created_at FROM events WHERE type = ? AND created_at >= ?",
+        (event_type, window_start),
+    ):
+        series[index_for(row["created_at"])]["events"] += 1
+
+    for row in conn.execute(
+        "SELECT d.created_at AS created_at, d.status AS status FROM deliveries d"
+        " JOIN events e ON e.id = d.event_id"
+        " WHERE e.type = ? AND d.created_at >= ?",
+        (event_type, window_start),
+    ):
+        bucket = series[index_for(row["created_at"])]
+        bucket["deliveries"] += 1
+        if row["status"] in DELIVERY_STATUSES:
+            bucket[row["status"]] += 1
+
+    attempt_row = conn.execute(
+        "SELECT COUNT(*) AS n, AVG((a.finished_at - a.started_at) * 1000.0) AS avg_ms"
+        " FROM attempts a JOIN deliveries d ON d.id = a.delivery_id"
+        " JOIN events e ON e.id = d.event_id"
+        " WHERE e.type = ? AND a.started_at >= ? AND a.finished_at IS NOT NULL",
+        (event_type, window_start),
+    ).fetchone()
+
+    totals = {"events": 0, "deliveries": 0, **{status: 0 for status in DELIVERY_STATUSES}}
+    for bucket in series:
+        for key in totals:
+            totals[key] += bucket[key]
+
+    deliveries = totals["deliveries"]
+    average_ms = attempt_row["avg_ms"]
+    return {
+        "type": event_type,
+        "hours": hours,
+        "bucket_seconds": bucket_seconds,
+        "window_start": window_start,
+        "totals": totals,
+        "success_rate": round(totals["succeeded"] / deliveries, 4) if deliveries else 0.0,
+        "avg_attempts_per_delivery": round(attempt_row["n"] / deliveries, 3) if deliveries else None,
+        "avg_attempt_ms": round(average_ms, 1) if average_ms is not None else None,
+        "buckets": series,
+    }
 
 
 def get_delivery(conn, delivery_id: str) -> DeliveryDetail | None:

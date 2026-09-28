@@ -415,4 +415,34 @@ test.describe("reviewer journey", () => {
     await page.getByRole("button", { name: "Resume endpoint" }).click();
     await expect(endpointRow(page, name)).toContainText("enabled");
   });
+
+  test("REQ-009 the trend card shows the history of one event type", async ({ page, request }) => {
+    const suffix = uniqueSuffix();
+    const eventType = `e2e_trend_${suffix}`;
+    const failingName = `E2E Trend Fail ${suffix}`;
+    const healthyName = `E2E Trend Ok ${suffix}`;
+    await page.goto("/");
+    const failingSecret = await createEndpoint(page, { name: failingName, types: [eventType] });
+    const healthySecret = await createEndpoint(page, { name: healthyName, types: [eventType] });
+    await configureReceiver(request, failingSecret, "always_fail");
+    await configureReceiver(request, healthySecret, "success");
+    await enableEndpoint(page, failingName);
+    await enableEndpoint(page, healthyName);
+
+    await publishEvent(page, { type: "custom", custom: eventType, payload: "{}" });
+    await publishEvent(page, { type: "custom", custom: eventType, payload: "{}" });
+    await selectLatestEvent(page, eventType);
+    await expect(branchFor(page, failingName)).toContainText("Failed", { timeout: 20_000 });
+
+    await page.reload();
+    await page.selectOption('[aria-label="Event type for the trend"]', eventType);
+    await page.getByRole("button", { name: /Refresh/ }).click();
+
+    await expect(page.getByTestId("trend-deliveries")).toContainText("4 deliveries");
+    await expect(page.getByTestId("trend-success")).toContainText("50%");
+    await expect(page.getByTestId("trend-chart")).toBeVisible();
+    await expect(page.locator('[data-testid="trend-bar"]')).toHaveCount(24);
+    // The current bucket holds the traffic, so its bar has a visible height.
+    await expect(page.locator('[data-testid="trend-bar"]').last()).toBeVisible();
+  });
 });

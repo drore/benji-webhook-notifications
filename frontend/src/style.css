@@ -235,6 +235,38 @@ button.signal-pill:hover {
   text-decoration: none;
 }
 
+.trend-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.trend-chart {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.trend-bar-succeeded {
+  fill: var(--ok);
+}
+
+.trend-bar-failed {
+  fill: var(--err);
+}
+
+.trend-bar-other {
+  fill: var(--pending-bg);
+}
+
+.trend-axis text {
+  font-size: 9px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
 .switch.is-disabled {
   cursor: not-allowed;
   color: var(--muted);

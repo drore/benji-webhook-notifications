@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { ApiError, createDashboardApi } from "./api/client";
 import AppHeader from "./components/AppHeader.vue";
 import DeliveryPanel from "./components/DeliveryPanel.vue";
+import DeliveryTrend from "./components/DeliveryTrend.vue";
 import EndpointsPanel from "./components/EndpointsPanel.vue";
 import EventComposer from "./components/EventComposer.vue";
 import EventFlow from "./components/EventFlow.vue";
@@ -83,6 +84,7 @@ onMounted(async () => {
           :selected-event-id="selectedEventId"
           @select="applySelection({ eventId: $event, deliveryId: null })"
         />
+        <DeliveryTrend :api="api" />
       </div>
       <aside class="column">
         <EventComposer :api="api" />

@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import event_schemas, store
 from .config import Settings, get_settings
 from .db import connect, init_schema
-from .models import ApiError, EndpointCreate, EventSubmit
+from .models import TYPE_PATTERN, ApiError, EndpointCreate, EventSubmit
 from .policy import PolicyError
 from .worker import DeliveryWorker
 
@@ -204,6 +204,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/event-types")
     def list_event_types():
         return {"items": event_schemas.registered_types()}
+
+    @app.get("/api/event-types/{event_type}/stats")
+    def event_type_stats(
+        event_type: str,
+        hours: int = 24,
+        buckets: int = 24,
+        conn=Depends(get_conn),
+    ):
+        if not TYPE_PATTERN.match(event_type):
+            raise ApiError(
+                _VALIDATION_CODE,
+                "Event type must be 1-64 characters from letters, digits, '_', '-', or '.'.",
+                400,
+            )
+        if not 1 <= hours <= 168:
+            raise ApiError(_VALIDATION_CODE, "hours must be between 1 and 168.", 400)
+        if not 1 <= buckets <= 96:
+            raise ApiError(_VALIDATION_CODE, "buckets must be between 1 and 96.", 400)
+        stats = store.event_type_stats(conn, event_type, time.time(), hours, buckets)
+        return {
+            "type": stats["type"],
+            "hours": stats["hours"],
+            "bucket_seconds": stats["bucket_seconds"],
+            "window_start": _iso(stats["window_start"]),
+            "totals": stats["totals"],
+            "success_rate": stats["success_rate"],
+            "avg_attempts_per_delivery": stats["avg_attempts_per_delivery"],
+            "avg_attempt_ms": stats["avg_attempt_ms"],
+            "buckets": [{**bucket, "start": _iso(bucket["start"])} for bucket in stats["buckets"]],
+        }
 
     @app.get("/api/events")
     def list_events(

@@ -103,6 +103,39 @@ export interface EventTypeInfo {
   };
 }
 
+export interface EventTypeStatsBucket {
+  start: string;
+  events: number;
+  deliveries: number;
+  pending: number;
+  in_progress: number;
+  retrying: number;
+  paused: number;
+  succeeded: number;
+  failed: number;
+}
+
+export interface EventTypeStats {
+  type: string;
+  hours: number;
+  bucket_seconds: number;
+  window_start: string;
+  totals: {
+    events: number;
+    deliveries: number;
+    pending: number;
+    in_progress: number;
+    retrying: number;
+    paused: number;
+    succeeded: number;
+    failed: number;
+  };
+  success_rate: number;
+  avg_attempts_per_delivery: number | null;
+  avg_attempt_ms: number | null;
+  buckets: EventTypeStatsBucket[];
+}
+
 export interface SubmitResult {
   event_id: string;
   deduplicated: boolean;
@@ -191,6 +224,10 @@ export function createDashboardApi(base = "/api") {
     submitEvent: (input: SubmitInput) =>
       request<SubmitResult>("/events", { method: "POST", body: JSON.stringify(input) }),
     listEventTypes: () => request<{ items: EventTypeInfo[] }>("/event-types"),
+    getEventTypeStats: (type: string, params: { hours: number; buckets: number }) =>
+      request<EventTypeStats>(
+        `/event-types/${encodeURIComponent(type)}/stats?hours=${params.hours}&buckets=${params.buckets}`,
+      ),
     replayDelivery: (id: string) =>
       request<{ delivery_id: string; status: string }>(`/deliveries/${id}/replay`, {
         method: "POST",
