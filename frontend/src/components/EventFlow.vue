@@ -20,7 +20,37 @@ const emit = defineEmits<{ "select-delivery": [deliveryId: string] }>();
 const event = ref<EventDetail | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const replayingAll = ref(false);
+const replaySummary = ref<string | null>(null);
 let timer: number | null = null;
+
+const failedDeliveries = computed(() =>
+  (event.value?.deliveries ?? []).filter((delivery) => delivery.status === "failed"),
+);
+
+async function replayAllFailed(): Promise<void> {
+  const targets = failedDeliveries.value;
+  if (replayingAll.value || !targets.length) return;
+  replayingAll.value = true;
+  replaySummary.value = null;
+  let replayed = 0;
+  const blocked: string[] = [];
+  for (const delivery of targets) {
+    try {
+      await props.api.replayDelivery(delivery.id);
+      replayed += 1;
+    } catch {
+      blocked.push(delivery.endpoint_name);
+    }
+  }
+  replaySummary.value = blocked.length
+    ? `Replayed ${replayed} of ${targets.length}; ${blocked.length} could not start (${blocked.join(
+        ", ",
+      )}) — a disabled endpoint blocks replay until it is resumed.`
+    : `Replayed ${replayed} of ${targets.length} failed deliveries — attempts append to the same delivery.`;
+  replayingAll.value = false;
+  await load();
+}
 
 const { fitView } = useVueFlow();
 
@@ -128,6 +158,20 @@ function onNodeClick(payload: { node: Node }): void {
       One branch per matching endpoint. Click an endpoint node to inspect its attempts and
       payload.
     </p>
+    <div v-if="event && failedDeliveries.length" class="journey-actions">
+      <button
+        type="button"
+        class="btn btn-small"
+        data-action="replay-all-failed"
+        :disabled="replayingAll"
+        @click="replayAllFailed"
+      >
+        {{ replayingAll ? "Replaying…" : `Replay all failed (${failedDeliveries.length})` }}
+      </button>
+      <span v-if="replaySummary" class="side-note" data-testid="replay-all-summary">
+        {{ replaySummary }}
+      </span>
+    </div>
     <p v-if="!eventId" class="empty-state">
       Select an event from Recent events to follow its delivery journey.
     </p>

@@ -382,4 +382,37 @@ test.describe("reviewer journey", () => {
     await expect(page.getByTestId("enforce-schema-tip")).toContainText("ask your Benji contact");
     await expect(page.getByTestId("enforce-schema-tip")).not.toContainText(".py");
   });
+
+  test("REQ-004/008 bulk replay and endpoint control from the delivery panel", async ({
+    page,
+    request,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Bulk ${suffix}`;
+    const eventType = `e2e_bulk_${suffix}`;
+    await page.goto("/");
+    // A type only this endpoint subscribes to, so the journey holds exactly one branch.
+    const secret = await createEndpoint(page, { name, types: [eventType] });
+    await configureReceiver(request, secret, "always_fail");
+    await enableEndpoint(page, name);
+    await publishEvent(page, {
+      type: "custom",
+      custom: eventType,
+      payload: `{"member":"m_bulk_${suffix}","points":1}`,
+    });
+    const eventId = (await acceptedEventId(page)) as string;
+    await selectEventById(page, eventId);
+    const branch = branchFor(page, name);
+    await expect(branch).toContainText("Failed", { timeout: 20_000 });
+
+    await page.getByRole("button", { name: /Replay all failed/ }).click();
+    await expect(page.getByTestId("replay-all-summary")).toContainText("Replayed 1 of 1");
+    await expect(branch).toContainText("6 attempts overall", { timeout: 25_000 });
+
+    await branch.click();
+    await page.getByRole("button", { name: "Disable endpoint" }).click();
+    await expect(endpointRow(page, name)).toContainText("disabled");
+    await page.getByRole("button", { name: "Resume endpoint" }).click();
+    await expect(endpointRow(page, name)).toContainText("enabled");
+  });
 });

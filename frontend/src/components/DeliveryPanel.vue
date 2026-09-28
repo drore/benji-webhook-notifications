@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { DashboardApi } from "../api/client";
+import { ApiError } from "../api/client";
 import { attemptExplanation, attemptSummary, createDeliveryState, STATUS_LABELS } from "../state/delivery";
 import { buildDeliveryReport, deliveryHeadline } from "../state/report";
 import type { Attempt } from "../api/client";
@@ -49,6 +50,47 @@ const canReplay = computed(
 );
 
 const copiedReport = ref(false);
+const copiedId = ref(false);
+const endpointBusy = ref(false);
+const actionError = ref<string | null>(null);
+
+async function toggleEndpoint(): Promise<void> {
+  const current = delivery.value;
+  if (!current || endpointBusy.value) return;
+  endpointBusy.value = true;
+  actionError.value = null;
+  try {
+    await props.api.setEndpointEnabled(current.endpoint.id, !current.endpoint.enabled);
+    if (props.deliveryId) await load(props.deliveryId);
+  } catch (cause) {
+    actionError.value = cause instanceof ApiError ? cause.message : "Could not change the endpoint.";
+  } finally {
+    endpointBusy.value = false;
+  }
+}
+
+async function copyDeliveryId(): Promise<void> {
+  if (!delivery.value) return;
+  try {
+    await navigator.clipboard.writeText(delivery.value.id);
+    copiedId.value = true;
+    window.setTimeout(() => {
+      copiedId.value = false;
+    }, 1500);
+  } catch {
+    copiedId.value = false;
+  }
+}
+
+const receiverOrigin = computed(() => {
+  const url = delivery.value?.endpoint.url;
+  if (!url) return "";
+  try {
+    return `${new URL(url).origin}/`;
+  } catch {
+    return "";
+  }
+});
 
 async function copyReport(): Promise<void> {
   if (!delivery.value) return;
@@ -166,6 +208,36 @@ function durationLabel(attempt: Attempt): string {
         <dt>Next due</dt>
         <dd>{{ delivery.due_at ? new Date(delivery.due_at).toLocaleString() : "—" }}</dd>
       </dl>
+      <div class="delivery-actions">
+        <button
+          type="button"
+          class="btn btn-small"
+          data-action="toggle-endpoint"
+          :disabled="endpointBusy"
+          @click="toggleEndpoint"
+        >
+          {{ delivery.endpoint.enabled ? "Disable endpoint" : "Resume endpoint" }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-small"
+          data-action="copy-delivery-id"
+          @click="copyDeliveryId"
+        >
+          {{ copiedId ? "Copied" : "Copy delivery ID" }}
+        </button>
+        <a
+          v-if="receiverOrigin"
+          class="btn btn-small btn-ghost"
+          data-testid="open-receiver"
+          :href="receiverOrigin"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open receiver
+        </a>
+      </div>
+      <p v-if="actionError" class="banner banner-error">{{ actionError }}</p>
       <h3 style="font-size: 14px; margin: 0 0 8px">Payload</h3>
       <pre data-testid="payload-json">{{ JSON.stringify(delivery.event.payload, null, 2) }}</pre>
       <h3 style="font-size: 14px; margin: 0 0 8px">Attempts</h3>

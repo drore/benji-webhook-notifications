@@ -222,6 +222,19 @@ button.signal-pill:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.delivery-actions,
+.journey-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 12px;
+}
+
+.delivery-actions a {
+  text-decoration: none;
+}
+
 .switch.is-disabled {
   cursor: not-allowed;
   color: var(--muted);

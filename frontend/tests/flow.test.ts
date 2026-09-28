@@ -415,4 +415,105 @@ describe("EventFlow and DeliveryPanel", () => {
     expect(wrapper.find('button[data-action="replay"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="replay-unavailable"]').text()).toContain("disabled");
   });
+
+  it("replays every failed branch of an event from the journey", async () => {
+    const replayDelivery = vi.fn(async () => ({ delivery_id: "dlv_1", status: "pending" }));
+    const api = fakeApi({
+      getEvent: async () => ({
+        id: "evt_1",
+        type: "reward_transaction_created",
+        payload: {},
+        created_at: "2026-09-28T09:00:00Z",
+        deliveries: [
+          {
+            id: "dlv_1",
+            endpoint_id: "ep_1",
+            endpoint_name: "Partner CRM",
+            endpoint_url: "http://127.0.0.1:9000/webhooks/crm",
+            status: "failed",
+            due_at: null,
+            attempts_count: 3,
+            cycle_attempts: 3,
+            last_outcome: "retryable_http",
+            last_http_status: 500,
+          },
+          {
+            id: "dlv_2",
+            endpoint_id: "ep_2",
+            endpoint_name: "Rewards ledger",
+            endpoint_url: "http://127.0.0.1:9000/webhooks/ledger",
+            status: "succeeded",
+            due_at: null,
+            attempts_count: 1,
+            cycle_attempts: 1,
+            last_outcome: "success",
+            last_http_status: 200,
+          },
+        ],
+      }),
+      replayDelivery: replayDelivery as unknown as DashboardApi["replayDelivery"],
+    });
+    const wrapper = mount(EventFlow, { props: { api, eventId: "evt_1" } });
+    await flushPromises();
+
+    await wrapper.get('[data-action="replay-all-failed"]').trigger("click");
+    await flushPromises();
+
+    expect(replayDelivery).toHaveBeenCalledTimes(1);
+    expect(replayDelivery).toHaveBeenCalledWith("dlv_1");
+    expect(wrapper.get('[data-testid="replay-all-summary"]').text()).toContain("Replayed 1 of 1");
+  });
+
+  it("does not offer bulk replay when nothing failed", async () => {
+    const api = fakeApi({
+      getEvent: async () => ({
+        id: "evt_1",
+        type: "reward_transaction_created",
+        payload: {},
+        created_at: "2026-09-28T09:00:00Z",
+        deliveries: [
+          {
+            id: "dlv_2",
+            endpoint_id: "ep_2",
+            endpoint_name: "Rewards ledger",
+            endpoint_url: "http://127.0.0.1:9000/webhooks/ledger",
+            status: "succeeded",
+            due_at: null,
+            attempts_count: 1,
+            cycle_attempts: 1,
+            last_outcome: "success",
+            last_http_status: 200,
+          },
+        ],
+      }),
+    });
+    const wrapper = mount(EventFlow, { props: { api, eventId: "evt_1" } });
+    await flushPromises();
+    expect(wrapper.find('[data-action="replay-all-failed"]').exists()).toBe(false);
+  });
+
+  it("acts on the endpoint straight from the delivery panel", async () => {
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const setEndpointEnabled = vi.fn(async () => ({
+      ...deliveryFixture.endpoint,
+      enabled: false,
+    }));
+    const api = fakeApi({
+      getDelivery: async () => deliveryFixture,
+      setEndpointEnabled: setEndpointEnabled as unknown as DashboardApi["setEndpointEnabled"],
+    });
+    const wrapper = mount(DeliveryPanel, { props: { api, deliveryId: "dlv_1" } });
+    await flushPromises();
+
+    await wrapper.get('[data-action="toggle-endpoint"]').trigger("click");
+    await flushPromises();
+    expect(setEndpointEnabled).toHaveBeenCalledWith("ep_1", false);
+
+    await wrapper.get('[data-action="copy-delivery-id"]').trigger("click");
+    expect(writeText).toHaveBeenCalledWith("dlv_1");
+
+    const receiver = wrapper.get('[data-testid="open-receiver"]');
+    expect(receiver.attributes("href")).toBe("http://127.0.0.1:9000/");
+  });
 });
