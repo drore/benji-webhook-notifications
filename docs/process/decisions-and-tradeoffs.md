@@ -77,3 +77,4 @@ The [design specification](../spec/design.md) defines accepted behavior, the [im
 ## Change history
 
 - **2026-09-28:** register created to consolidate the decisions made during the 2026-09-27 design and implementation pass, including the playtest-driven revisions recorded on D-13, D-16, D-19, and D-20. No accepted behavior changed without the corresponding spec or plan text.
+- **2026-09-28 (later):** the design spec's FR-01 and FR-09 clauses were amended for the payload-schema rejection path, and its §5 API surface and §8 dashboard section were amended to describe the event-type routes, filtered/paginated events, and the investigation affordances recorded here as D-23…D-30; the scaling posture was assessed and accepted as a documented limit (D-31/D-32).

@@ -87,12 +87,14 @@ Single fixed customer is implicit; no customer table and no browser-supplied cus
 | `GET /api/endpoints` | List endpoints without secrets, including `enabled` |
 | `POST /api/endpoints/{id}/disable` / `enable` | Apply FR-03; return updated endpoint |
 | `POST /api/events` | FR-01; `201` created, `200` deduplicated, `409` conflict |
-| `GET /api/events?limit=` | Recent events with per-event delivery status counts |
+| `GET /api/events?limit=&offset=&status=&type=&endpoint_id=` | Recent events with per-event delivery status counts plus a `total` match count; `status` accepts a delivery status or `no_receivers`, and the type/endpoint filters narrow the list for investigation. *(Amended 2026-09-28 with Dror's approval.)* |
 | `GET /api/events/{id}` | Event with its deliveries (status, due time, attempt count) |
 | `GET /api/deliveries/{id}` | Delivery, event payload, endpoint summary, ordered attempts |
 | `POST /api/deliveries/{id}/replay` | FR-06; `202` accepted, `409` unavailable |
 | `GET /api/overview` | Failed count, retrying count + earliest due, latest event summary |
 | `GET /api/health` | Liveness/readiness probe |
+| `GET /api/event-types` | Registered event types with description and generated JSON Schema |
+| `GET /api/event-types/{type}/stats?hours=&buckets=` | Delivery performance for one event type: bucketed counts by current status, totals, success rate, average attempts per delivery, and average attempt duration. *(Added 2026-09-28 with Dror's approval.)* |
 
 ## 6. Components and data flow
 
@@ -134,6 +136,8 @@ Event-centered journey view built on a shared design system (cards, status pills
 - **Delivery panel:** endpoint and URL, state, due time, a vertical attempt timeline (dot color per outcome, attempt number, HTTP status with a per-attempt `?` explanation of what that status means in context, duration, bounded excerpt, and the next scheduled attempt while retrying), formatted payload as escaped JSON, replay button only when eligible.
 - **Endpoints panel:** create form (name and event types; the receiver URL is generated), one-time secret display with copy and receiver setup steps, enable/disable toggles.
 - **States:** loading, empty, pending-action disablement, inline safe errors, dedup/conflict, stale banner, paused. Polling every 2s while visible per FR-10.
+
+**Investigation affordances (added 2026-09-28 with Dror's approval).** The dashboard also: keeps the selected event and delivery in the URL (`?event=evt_…&delivery=dlv_…`) and offers a **Find by ID** box that resolves a pasted `evt_…`/`dlv_…` id; filters the events list server-side by status, event type, and endpoint, driven by the header signals and a facet bar with pagination; groups the attempt timeline per retry cycle and shows a live in-flight attempt from the delivery's claim time; presents a one-line outcome headline with a copyable Markdown report; replays every failed branch of an event at once and lets the delivery panel disable/resume its endpoint, copy the delivery id, or open the receiver; shows a **Delivery trend** card per event type (chips plus an inline SVG chart, D-26); offers a per-publish **Enforce schema** switch for registered payload contracts (D-24/D-25); pauses every panel with one control, exposes **Refresh now**, and labels each card "live" or "paused · updated …" with a pulsing status dot; reorders panels by dragging a grip, remembering the layout locally; and can publish **simulated traffic** on an interval to imitate real-world flow (D-29).
 
 ## 9. Testing strategy
 
